@@ -32,6 +32,8 @@ export default function Atendimento() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [mesa, setMesa] = useState<Mesa | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
   const [confirmarFechamento, setConfirmarFechamento] = useState(false);
   const [confirmarCancelamento, setConfirmarCancelamento] = useState<string | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -56,33 +58,66 @@ export default function Atendimento() {
     let mounted = true;
     
     const carregar = async () => {
+      setCarregando(true);
+      setErro(null);
+      
       try {
-        if (!id) return;
+        if (!id) {
+          setErro('ID da mesa não fornecido');
+          setCarregando(false);
+          return;
+        }
+        
+        console.log('Carregando mesa:', id);
         const m = await getMesa(id);
+        
         if (!mounted) return;
         
-        if (!m || !m.atendimentoAberto) {
-          navigate('/');
+        if (!m) {
+          console.error('Mesa não encontrada:', id);
+          setErro('Mesa não encontrada');
+          setCarregando(false);
+          return;
+        }
+        
+        if (!m.atendimentoAberto) {
+          console.error('Mesa sem atendimento aberto:', id);
+          setErro('Esta mesa não tem atendimento aberto');
+          setCarregando(false);
+          setTimeout(() => navigate('/'), 2000);
           return;
         }
         
         // Validar dados
         if (!Array.isArray(m.atendimentoAberto.convidados)) {
           console.error('Dados de convidados inválidos');
-          navigate('/');
+          setErro('Dados de convidados inválidos');
+          setCarregando(false);
           return;
         }
         
+        console.log('Mesa carregada com sucesso:', m.numero);
         setMesa(m);
+        
+        // Carregar pedidos
+        console.log('Carregando pedidos...');
         const map: Record<string, Pedido[]> = {};
         for (const c of m.atendimentoAberto.convidados) {
           map[c.id] = await getPedidosByConvidado(c.id);
         }
+        
         if (!mounted) return;
+        
         setPedidosPorConvidado(map);
-        setTodosPedidos(await getPedidosByAtendimento(m.atendimentoAberto.id));
+        const pedidos = await getPedidosByAtendimento(m.atendimentoAberto.id);
+        setTodosPedidos(pedidos);
+        
+        console.log('Pedidos carregados:', pedidos.length);
+        setCarregando(false);
       } catch (error) {
         console.error('Erro ao carregar atendimento:', error);
+        setErro(`Erro ao carregar atendimento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        setCarregando(false);
       }
     };
     
@@ -93,14 +128,78 @@ export default function Atendimento() {
 
   useEffect(() => {
     if (!mesa?.atendimentoAberto) return;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       setTick(t => t + 1);
-      carregarDados();
+      await carregarDados();
     }, 30000);
     return () => clearInterval(interval);
   }, [mesa]);
 
-  if (!mesa || !mesa.atendimentoAberto) return null;
+  // Tela de carregamento
+  if (carregando) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
+            <Clock size={32} className="text-emerald-600" />
+          </div>
+          <p className="text-lg font-semibold text-slate-700">Carregando atendimento...</p>
+          <p className="text-sm text-slate-500">Aguarde enquanto buscamos os dados</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Tela de erro
+  if (erro) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 border-2 border-red-200">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+            <XCircle size={32} className="text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 text-center">Erro ao Carregar</h2>
+          <p className="text-sm text-slate-600 text-center">{erro}</p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium active:scale-95 transition-transform"
+            >
+              Voltar
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-medium active:scale-95 transition-transform"
+            >
+              Tentar Novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!mesa || !mesa.atendimentoAberto) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 border-2 border-amber-200">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+            <XCircle size={32} className="text-amber-600" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 text-center">Atendimento Não Encontrado</h2>
+          <p className="text-sm text-slate-600 text-center">
+            Esta mesa não possui um atendimento aberto ou os dados não foram carregados corretamente.
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-medium active:scale-95 transition-transform"
+          >
+            Voltar para Mesas
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const atendimento = mesa.atendimentoAberto;
 
