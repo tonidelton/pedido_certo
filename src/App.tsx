@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Mesas from './pages/Mesas';
 import Cardapio from './pages/Cardapio';
@@ -11,7 +11,7 @@ import DetalhePedido from './pages/DetalhePedido';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Mesas />} />
@@ -24,6 +24,6 @@ export default function App() {
           <Route path="/pedido/:id" element={<DetalhePedido />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
