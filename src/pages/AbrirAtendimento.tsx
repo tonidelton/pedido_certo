@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Users, Check } from 'lucide-react';
 import { Mesa, corParaClasses, CORES_CONVIDADO } from '../types';
-import { getMesa, abrirAtendimento } from '../mesasStore';
+import { getMesa, abrirAtendimento } from '../services/mesasService';
 
 export default function AbrirAtendimento() {
   const navigate = useNavigate();
@@ -12,17 +12,27 @@ export default function AbrirAtendimento() {
   const [apelidos, setApelidos] = useState<string[]>(['', '']);
 
   useEffect(() => {
-    if (!id) return;
-    const m = getMesa(id);
-    if (!m) {
-      navigate('/');
-      return;
-    }
-    if (m.atendimentoAberto) {
-      navigate(`/mesa/${id}`);
-      return;
-    }
-    setMesa(m);
+    let mounted = true;
+    
+    const carregar = async () => {
+      if (!id) return;
+      const m = await getMesa(id);
+      if (!mounted) return;
+      
+      if (!m) {
+        navigate('/');
+        return;
+      }
+      if (m.atendimentoAberto) {
+        navigate(`/mesa/${id}`);
+        return;
+      }
+      setMesa(m);
+    };
+    
+    carregar();
+    
+    return () => { mounted = false; };
   }, [id, navigate]);
 
   if (!mesa) return null;
@@ -46,9 +56,9 @@ export default function AbrirAtendimento() {
     setApelidos(novos);
   };
 
-  const handleAbrir = () => {
+  const handleAbrir = async () => {
     if (!id) return;
-    abrirAtendimento(id, numConvidados, apelidos);
+    await abrirAtendimento(id, numConvidados, apelidos);
     navigate(`/mesa/${id}`);
   };
 

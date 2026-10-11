@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Minus, Trash2, Save, ShoppingCart, X } from 'lucide-react';
 import { Produto, Categoria, CATEGORIAS, Convidado, corParaClasses, Mesa, ItemPedido } from '../types';
-import { getMesa } from '../mesasStore';
-import { getProdutos } from '../store';
-import { criarPedido } from '../pedidosStore';
+import { getMesa } from '../services/mesasService';
+import { getProdutos } from '../services/produtosService';
+import { criarPedido } from '../services/pedidosService';
 import Toast from '../components/Toast';
 
 const categoriaEmoji: Record<Categoria, string> = {
@@ -44,23 +44,35 @@ export default function NovoPedido() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
-    if (!mesaId) return;
-    const m = getMesa(mesaId);
-    if (!m || !m.atendimentoAberto) {
-      navigate('/');
-      return;
-    }
-    setMesa(m);
+    let mounted = true;
+    
+    const carregar = async () => {
+      if (!mesaId) return;
+      const m = await getMesa(mesaId);
+      if (!mounted) return;
+      
+      if (!m || !m.atendimentoAberto) {
+        navigate('/');
+        return;
+      }
+      setMesa(m);
 
-    const conv = m.atendimentoAberto.convidados.find(c => c.id === convidadoId);
-    if (!conv) {
-      navigate('/');
-      return;
-    }
-    setConvidado(conv);
+      const conv = m.atendimentoAberto.convidados.find(c => c.id === convidadoId);
+      if (!conv) {
+        navigate('/');
+        return;
+      }
+      setConvidado(conv);
 
-    // Produtos ativos
-    setProdutos(getProdutos().filter(p => p.ativo));
+      // Produtos ativos
+      const produtosData = await getProdutos();
+      if (!mounted) return;
+      setProdutos(produtosData.filter(p => p.ativo));
+    };
+    
+    carregar();
+    
+    return () => { mounted = false; };
   }, [mesaId, convidadoId, navigate]);
 
   const produtosFiltrados = useMemo(() => {
@@ -95,7 +107,7 @@ export default function NovoPedido() {
     setCarrinho(carrinho.filter(i => i.key !== key));
   };
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     if (!mesa || !convidado || !mesa.atendimentoAberto || carrinho.length === 0) return;
 
     const itens: ItemPedido[] = carrinho.map(item => ({
@@ -109,7 +121,7 @@ export default function NovoPedido() {
       entregueEm: null,
     }));
 
-    const pedido = criarPedido(
+    const pedido = await criarPedido(
       mesa.id,
       mesa.numero,
       mesa.atendimentoAberto.id,

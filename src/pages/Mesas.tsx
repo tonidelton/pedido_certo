@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Users, X, Ticket, Database } from 'lucide-react';
 import { Mesa } from '../types';
-import { getMesas, excluirMesa } from '../mesasStore';
-import { getPedidoByCodigo } from '../pedidosStore';
+import { getMesas, excluirMesa } from '../services/mesasService';
+import { getPedidoByCodigo } from '../services/pedidosService';
 import { isFirebaseConfigured } from '../firebase';
 import Toast from '../components/Toast';
 
@@ -16,8 +16,12 @@ export default function Mesas() {
   const [firebaseConfigurado, setFirebaseConfigurado] = useState(false);
 
   useEffect(() => {
-    setMesas(getMesas());
-    setFirebaseConfigurado(isFirebaseConfigured());
+    const carregar = async () => {
+      const mesasData = await getMesas();
+      setMesas(mesasData);
+      setFirebaseConfigurado(isFirebaseConfigured());
+    };
+    carregar();
   }, []);
 
   const mesasFiltradas = useMemo(() => {
@@ -26,7 +30,7 @@ export default function Mesas() {
     return mesas.filter(m => m.numero.toLowerCase().includes(termo));
   }, [mesas, busca]);
 
-  const handleBuscaSubmit = (e: React.FormEvent) => {
+  const handleBuscaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!busca.trim()) return;
 
@@ -35,7 +39,7 @@ export default function Mesas() {
     // Verificar se é um código de pedido (formato M{número}-P{sequência})
     const codigoPedidoRegex = /^M\d+-P\d+$/i;
     if (codigoPedidoRegex.test(termo)) {
-      const pedido = getPedidoByCodigo(termo);
+      const pedido = await getPedidoByCodigo(termo);
       if (pedido) {
         navigate(`/pedido/${pedido.id}`);
         setBusca('');
@@ -51,9 +55,10 @@ export default function Mesas() {
     setBusca(valor);
   };
 
-  const handleExcluir = (id: string) => {
-    excluirMesa(id);
-    setMesas(getMesas());
+  const handleExcluir = async (id: string) => {
+    await excluirMesa(id);
+    const mesasData = await getMesas();
+    setMesas(mesasData);
     setConfirmarExclusao(null);
     setToast({ message: 'Mesa excluída com sucesso', type: 'success' });
   };

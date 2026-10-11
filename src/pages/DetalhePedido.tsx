@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, User, ChefHat, CheckCircle2, XCircle, AlertCircle, Check } from 'lucide-react';
 import { Pedido, StatusPedido, statusPedidoLabels, statusPedidoCores } from '../types';
-import { getPedido, atualizarStatusPedido, marcarItemEntregue, desmarcarItemEntregue } from '../pedidosStore';
+import { getPedido, atualizarStatusPedido, marcarItemEntregue, desmarcarItemEntregue } from '../services/pedidosService';
 import Toast from '../components/Toast';
 
 function formatarDataHora(iso: string): string {
@@ -55,13 +55,23 @@ export default function DetalhePedido() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
-    if (!id) return;
-    const p = getPedido(id);
-    if (!p) {
-      navigate('/');
-      return;
-    }
-    setPedido(p);
+    let mounted = true;
+    
+    const carregar = async () => {
+      if (!id) return;
+      const p = await getPedido(id);
+      if (!mounted) return;
+      
+      if (!p) {
+        navigate('/');
+        return;
+      }
+      setPedido(p);
+    };
+    
+    carregar();
+    
+    return () => { mounted = false; };
   }, [id, navigate]);
 
   if (!pedido) return null;
@@ -69,9 +79,9 @@ export default function DetalhePedido() {
   const statusClasses = statusPedidoCores[pedido.status];
   const fluxo = fluxos[pedido.status];
 
-  const handleMudarStatus = (novoStatus: StatusPedido) => {
+  const handleMudarStatus = async (novoStatus: StatusPedido) => {
     if (!id) return;
-    const atualizado = atualizarStatusPedido(id, novoStatus);
+    const atualizado = await atualizarStatusPedido(id, novoStatus);
     if (atualizado) {
       setPedido(atualizado);
       const mensagens: Record<StatusPedido, string> = {
@@ -91,18 +101,18 @@ export default function DetalhePedido() {
     setConfirmarCancelamento(false);
   };
 
-  const handleMarcarItemEntregue = (itemId: string) => {
+  const handleMarcarItemEntregue = async (itemId: string) => {
     if (!id) return;
-    const atualizado = marcarItemEntregue(id, itemId);
+    const atualizado = await marcarItemEntregue(id, itemId);
     if (atualizado) {
       setPedido(atualizado);
       setToast({ message: 'Item marcado como entregue', type: 'success' });
     }
   };
 
-  const handleDesmarcarItemEntregue = (itemId: string) => {
+  const handleDesmarcarItemEntregue = async (itemId: string) => {
     if (!id) return;
-    const atualizado = desmarcarItemEntregue(id, itemId);
+    const atualizado = await desmarcarItemEntregue(id, itemId);
     if (atualizado) {
       setPedido(atualizado);
       setToast({ message: 'Item desmarcado', type: 'info' });

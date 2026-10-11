@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { Produto, Categoria, CATEGORIAS } from '../types';
-import { getProdutos, addProduto, updateProduto, gerarCodigoSugerido, codigoExiste } from '../store';
+import { getProdutos, addProduto, updateProduto, gerarCodigoSugerido, codigoExiste } from '../services/produtosService';
 
 export default function ProdutoForm() {
   const navigate = useNavigate();
@@ -20,23 +20,26 @@ export default function ProdutoForm() {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    if (isEdit) {
-      const produtos = getProdutos();
-      const produto = produtos.find(p => p.id === id);
-      if (produto) {
-        setNome(produto.nome);
-        setCodigo(produto.codigo);
-        setCategoria(produto.categoria);
-        setPreco(produto.preco !== null ? produto.preco.toFixed(2) : '');
-        setObservacoes(produto.observacoes);
-        setAtivo(produto.ativo);
+    const carregar = async () => {
+      if (isEdit) {
+        const produtos = await getProdutos();
+        const produto = produtos.find(p => p.id === id);
+        if (produto) {
+          setNome(produto.nome);
+          setCodigo(produto.codigo);
+          setCategoria(produto.categoria);
+          setPreco(produto.preco !== null ? produto.preco.toFixed(2) : '');
+          setObservacoes(produto.observacoes);
+          setAtivo(produto.ativo);
+        } else {
+          navigate('/cardapio');
+        }
       } else {
-        navigate('/cardapio');
+        // Sugerir código automaticamente
+        setCodigo(gerarCodigoSugerido('Entradas'));
       }
-    } else {
-      // Sugerir código automaticamente
-      setCodigo(gerarCodigoSugerido('Entradas'));
-    }
+    };
+    carregar();
   }, [id, isEdit, navigate]);
 
   const handleCategoriaChange = (novaCategoria: Categoria) => {
@@ -68,7 +71,7 @@ export default function ProdutoForm() {
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
     setErroCodigo('');
@@ -80,7 +83,7 @@ export default function ProdutoForm() {
     const precoNum = preco.trim() ? parseFloat(preco.replace(',', '.')) : null;
 
     if (isEdit && id) {
-      updateProduto(id, {
+      await updateProduto(id, {
         nome: nome.trim(),
         codigo: codigo.trim(),
         categoria,
@@ -89,7 +92,7 @@ export default function ProdutoForm() {
         ativo,
       });
     } else {
-      addProduto({
+      await addProduto({
         nome: nome.trim(),
         codigo: codigo.trim(),
         categoria,

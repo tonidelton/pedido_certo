@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, LogOut, Edit3, Check, Users, X, Plus, ChefHat, CheckCircle2, XCircle } from 'lucide-react';
 import { Mesa, corParaClasses, Pedido, StatusPedido, statusPedidoCores, statusPedidoLabels } from '../types';
-import { getMesa, fecharAtendimento, atualizarApelido } from '../mesasStore';
-import { getPedidosByConvidado, getPedidosByAtendimento, atualizarStatusPedido, marcarItemEntregue, desmarcarItemEntregue } from '../pedidosStore';
+import { getMesa, fecharAtendimento, atualizarApelido } from '../services/mesasService';
+import { getPedidosByConvidado, getPedidosByAtendimento, atualizarStatusPedido, marcarItemEntregue, desmarcarItemEntregue } from '../services/pedidosService';
 import Toast from '../components/Toast';
 
 function formatarHora(iso: string): string {
@@ -42,47 +42,60 @@ export default function Atendimento() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
   const [, setTick] = useState(0);
 
-  useEffect(() => {
-    try {
-      if (!id) return;
-      const m = getMesa(id);
-      if (!m || !m.atendimentoAberto) {
-        navigate('/');
-        return;
-      }
-      
-      // Validar dados
-      if (!Array.isArray(m.atendimentoAberto.convidados)) {
-        console.error('Dados de convidados inválidos');
-        navigate('/');
-        return;
-      }
-      
-      setMesa(m);
-      const map: Record<string, Pedido[]> = {};
-      m.atendimentoAberto.convidados.forEach(c => {
-        map[c.id] = getPedidosByConvidado(c.id);
-      });
-      setPedidosPorConvidado(map);
-      setTodosPedidos(getPedidosByAtendimento(m.atendimentoAberto.id));
-    } catch (error) {
-      console.error('Erro ao carregar atendimento:', error);
-      // Em caso de erro, limpar localStorage e recarregar
-      localStorage.clear();
-      window.location.reload();
+  const carregarDados = async () => {
+    if (!mesa?.atendimentoAberto) return;
+    const map: Record<string, Pedido[]> = {};
+    for (const c of mesa.atendimentoAberto.convidados) {
+      map[c.id] = await getPedidosByConvidado(c.id);
     }
+    setPedidosPorConvidado(map);
+    setTodosPedidos(await getPedidosByAtendimento(mesa.atendimentoAberto.id));
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    
+    const carregar = async () => {
+      try {
+        if (!id) return;
+        const m = await getMesa(id);
+        if (!mounted) return;
+        
+        if (!m || !m.atendimentoAberto) {
+          navigate('/');
+          return;
+        }
+        
+        // Validar dados
+        if (!Array.isArray(m.atendimentoAberto.convidados)) {
+          console.error('Dados de convidados inválidos');
+          navigate('/');
+          return;
+        }
+        
+        setMesa(m);
+        const map: Record<string, Pedido[]> = {};
+        for (const c of m.atendimentoAberto.convidados) {
+          map[c.id] = await getPedidosByConvidado(c.id);
+        }
+        if (!mounted) return;
+        setPedidosPorConvidado(map);
+        setTodosPedidos(await getPedidosByAtendimento(m.atendimentoAberto.id));
+      } catch (error) {
+        console.error('Erro ao carregar atendimento:', error);
+      }
+    };
+    
+    carregar();
+    
+    return () => { mounted = false; };
   }, [id, navigate]);
 
   useEffect(() => {
     if (!mesa?.atendimentoAberto) return;
     const interval = setInterval(() => {
       setTick(t => t + 1);
-      const map: Record<string, Pedido[]> = {};
-      mesa.atendimentoAberto!.convidados.forEach(c => {
-        map[c.id] = getPedidosByConvidado(c.id);
-      });
-      setPedidosPorConvidado(map);
-      setTodosPedidos(getPedidosByAtendimento(mesa.atendimentoAberto!.id));
+      carregarDados();
     }, 30000);
     return () => clearInterval(interval);
   }, [mesa]);
@@ -140,35 +153,25 @@ export default function Atendimento() {
     });
   }, [todosPedidos]);
 
-  const handleFechar = () => {
+  const handleFechar = async () => {
     if (!id) return;
-    fecharAtendimento(id);
+    await fecharAtendimento(id);
     setConfirmarFechamento(false);
     navigate('/');
   };
 
-  const handleSalvarApelido = (convidadoId: string) => {
+  const handleSalvarApelido = async (convidadoId: string) => {
     if (!id) return;
-    atualizarApelido(id, convidadoId, apelidoEdit);
-    const m = getMesa(id);
+    await atualizarApelido(id, convidadoId, apelidoEdit);
+    const m = await getMesa(id);
     if (m) setMesa(m);
     setEditandoId(null);
   };
 
-  const carregarDados = () => {
-    if (!mesa?.atendimentoAberto) return;
-    const map: Record<string, Pedido[]> = {};
-    mesa.atendimentoAberto.convidados.forEach(c => {
-      map[c.id] = getPedidosByConvidado(c.id);
-    });
-    setPedidosPorConvidado(map);
-    setTodosPedidos(getPedidosByAtendimento(mesa.atendimentoAberto.id));
-  };
-
-  const handleMudarStatus = (pedidoId: string, novoStatus: StatusPedido) => {
-    const atualizado = atualizarStatusPedido(pedidoId, novoStatus);
+  const handleMudarStatus = async (pedidoId: string, novoStatus: StatusPedido) => {
+    const atualizado = await atualizarStatusPedido(pedidoId, novoStatus);
     if (atualizado) {
-      carregarDados();
+      await carregarDados();
       const mensagens: Record<StatusPedido, string> = {
         pendente: 'Pedido marcado como pendente',
         em_preparo: 'Preparo iniciado',
@@ -186,18 +189,18 @@ export default function Atendimento() {
     setConfirmarCancelamento(null);
   };
 
-  const handleMarcarItemEntregue = (pedidoId: string, itemId: string) => {
-    const atualizado = marcarItemEntregue(pedidoId, itemId);
+  const handleMarcarItemEntregue = async (pedidoId: string, itemId: string) => {
+    const atualizado = await marcarItemEntregue(pedidoId, itemId);
     if (atualizado) {
-      carregarDados();
+      await carregarDados();
       setToast({ message: 'Item marcado como entregue', type: 'success' });
     }
   };
 
-  const handleDesmarcarItemEntregue = (pedidoId: string, itemId: string) => {
-    const atualizado = desmarcarItemEntregue(pedidoId, itemId);
+  const handleDesmarcarItemEntregue = async (pedidoId: string, itemId: string) => {
+    const atualizado = await desmarcarItemEntregue(pedidoId, itemId);
     if (atualizado) {
-      carregarDados();
+      await carregarDados();
       setToast({ message: 'Item desmarcado', type: 'info' });
     }
   };

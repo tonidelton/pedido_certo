@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Edit3, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Produto, Categoria, CATEGORIAS } from '../types';
-import { getProdutos, toggleAtivo } from '../store';
+import { getProdutos, toggleAtivo } from '../services/produtosService';
 
 const categoriaEmoji: Record<Categoria, string> = {
   'Entradas': '🥗',
@@ -25,7 +25,11 @@ export default function Cardapio() {
   const [mostrarInativos, setMostrarInativos] = useState(false);
 
   useEffect(() => {
-    setProdutos(getProdutos());
+    const carregar = async () => {
+      const produtosData = await getProdutos();
+      setProdutos(produtosData);
+    };
+    carregar();
   }, []);
 
   const produtosFiltrados = useMemo(() => {
@@ -57,9 +61,10 @@ export default function Cardapio() {
     return grupos;
   }, [produtosFiltrados]);
 
-  const handleToggle = (id: string) => {
-    toggleAtivo(id);
-    setProdutos(getProdutos());
+  const handleToggle = async (id: string) => {
+    await toggleAtivo(id);
+    const produtosData = await getProdutos();
+    setProdutos(produtosData);
   };
 
   const totalAtivos = produtos.filter(p => p.ativo).length;
