@@ -42,36 +42,47 @@ export default function Atendimento() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
   const [, setTick] = useState(0);
 
-  const carregarDados = () => {
-    if (!mesa?.atendimentoAberto) return;
-    const map: Record<string, Pedido[]> = {};
-    mesa.atendimentoAberto.convidados.forEach(c => {
-      map[c.id] = getPedidosByConvidado(c.id);
-    });
-    setPedidosPorConvidado(map);
-    setTodosPedidos(getPedidosByAtendimento(mesa.atendimentoAberto.id));
-  };
-
   useEffect(() => {
-    if (!id) return;
-    const m = getMesa(id);
-    if (!m || !m.atendimentoAberto) {
-      navigate('/');
-      return;
+    try {
+      if (!id) return;
+      const m = getMesa(id);
+      if (!m || !m.atendimentoAberto) {
+        navigate('/');
+        return;
+      }
+      
+      // Validar dados
+      if (!Array.isArray(m.atendimentoAberto.convidados)) {
+        console.error('Dados de convidados inválidos');
+        navigate('/');
+        return;
+      }
+      
+      setMesa(m);
+      const map: Record<string, Pedido[]> = {};
+      m.atendimentoAberto.convidados.forEach(c => {
+        map[c.id] = getPedidosByConvidado(c.id);
+      });
+      setPedidosPorConvidado(map);
+      setTodosPedidos(getPedidosByAtendimento(m.atendimentoAberto.id));
+    } catch (error) {
+      console.error('Erro ao carregar atendimento:', error);
+      // Em caso de erro, limpar localStorage e recarregar
+      localStorage.clear();
+      window.location.reload();
     }
-    setMesa(m);
-    const map: Record<string, Pedido[]> = {};
-    m.atendimentoAberto.convidados.forEach(c => {
-      map[c.id] = getPedidosByConvidado(c.id);
-    });
-    setPedidosPorConvidado(map);
-    setTodosPedidos(getPedidosByAtendimento(m.atendimentoAberto.id));
   }, [id, navigate]);
 
   useEffect(() => {
+    if (!mesa?.atendimentoAberto) return;
     const interval = setInterval(() => {
       setTick(t => t + 1);
-      carregarDados();
+      const map: Record<string, Pedido[]> = {};
+      mesa.atendimentoAberto!.convidados.forEach(c => {
+        map[c.id] = getPedidosByConvidado(c.id);
+      });
+      setPedidosPorConvidado(map);
+      setTodosPedidos(getPedidosByAtendimento(mesa.atendimentoAberto!.id));
     }, 30000);
     return () => clearInterval(interval);
   }, [mesa]);
@@ -82,29 +93,35 @@ export default function Atendimento() {
 
   // Resumo por itens
   const resumoItens = useMemo(() => {
-    let pendentes = 0;
-    let emPreparo = 0;
-    let entregues = 0;
+    try {
+      let pendentes = 0;
+      let emPreparo = 0;
+      let entregues = 0;
 
-    todosPedidos.forEach(pedido => {
-      if (pedido.status === 'cancelado') return;
-      pedido.itens.forEach(item => {
-        if (item.entregueEm) {
-          entregues++;
-        } else if (pedido.status === 'pendente') {
-          pendentes++;
-        } else {
-          emPreparo++;
-        }
+      todosPedidos.forEach(pedido => {
+        if (pedido.status === 'cancelado') return;
+        if (!Array.isArray(pedido.itens)) return;
+        pedido.itens.forEach(item => {
+          if (item.entregueEm) {
+            entregues++;
+          } else if (pedido.status === 'pendente') {
+            pendentes++;
+          } else {
+            emPreparo++;
+          }
+        });
       });
-    });
 
-    const partes: string[] = [];
-    if (pendentes > 0) partes.push(`${pendentes} pendente${pendentes > 1 ? 's' : ''}`);
-    if (emPreparo > 0) partes.push(`${emPreparo} em preparo`);
-    if (entregues > 0) partes.push(`${entregues} entregue${entregues > 1 ? 's' : ''}`);
+      const partes: string[] = [];
+      if (pendentes > 0) partes.push(`${pendentes} pendente${pendentes > 1 ? 's' : ''}`);
+      if (emPreparo > 0) partes.push(`${emPreparo} em preparo`);
+      if (entregues > 0) partes.push(`${entregues} entregue${entregues > 1 ? 's' : ''}`);
 
-    return partes.length > 0 ? partes.join(' · ') : 'Sem itens';
+      return partes.length > 0 ? partes.join(' · ') : 'Sem itens';
+    } catch (error) {
+      console.error('Erro ao calcular resumo:', error);
+      return 'Sem itens';
+    }
   }, [todosPedidos]);
 
   // Pedidos ordenados
@@ -136,6 +153,16 @@ export default function Atendimento() {
     const m = getMesa(id);
     if (m) setMesa(m);
     setEditandoId(null);
+  };
+
+  const carregarDados = () => {
+    if (!mesa?.atendimentoAberto) return;
+    const map: Record<string, Pedido[]> = {};
+    mesa.atendimentoAberto.convidados.forEach(c => {
+      map[c.id] = getPedidosByConvidado(c.id);
+    });
+    setPedidosPorConvidado(map);
+    setTodosPedidos(getPedidosByAtendimento(mesa.atendimentoAberto.id));
   };
 
   const handleMudarStatus = (pedidoId: string, novoStatus: StatusPedido) => {
@@ -176,42 +203,54 @@ export default function Atendimento() {
   };
 
   const getResumoPedidosConvidado = (convidadoId: string) => {
-    const pedidos = pedidosPorConvidado[convidadoId] || [];
-    let pendentes = 0;
-    let emPreparo = 0;
-    let entregues = 0;
+    try {
+      const pedidos = pedidosPorConvidado[convidadoId] || [];
+      let pendentes = 0;
+      let emPreparo = 0;
+      let entregues = 0;
 
-    pedidos.forEach(pedido => {
-      if (pedido.status === 'cancelado') return;
-      pedido.itens.forEach(item => {
-        if (item.entregueEm) {
-          entregues++;
-        } else if (pedido.status === 'pendente') {
-          pendentes++;
-        } else {
-          emPreparo++;
-        }
+      pedidos.forEach(pedido => {
+        if (pedido.status === 'cancelado') return;
+        if (!Array.isArray(pedido.itens)) return;
+        pedido.itens.forEach(item => {
+          if (item.entregueEm) {
+            entregues++;
+          } else if (pedido.status === 'pendente') {
+            pendentes++;
+          } else {
+            emPreparo++;
+          }
+        });
       });
-    });
 
-    const partes: string[] = [];
-    if (pendentes > 0) partes.push(`${pendentes} pendente${pendentes > 1 ? 's' : ''}`);
-    if (emPreparo > 0) partes.push(`${emPreparo} em preparo`);
-    if (entregues > 0) partes.push(`${entregues} entregue${entregues > 1 ? 's' : ''}`);
+      const partes: string[] = [];
+      if (pendentes > 0) partes.push(`${pendentes} pendente${pendentes > 1 ? 's' : ''}`);
+      if (emPreparo > 0) partes.push(`${emPreparo} em preparo`);
+      if (entregues > 0) partes.push(`${entregues} entregue${entregues > 1 ? 's' : ''}`);
 
-    return {
-      texto: partes.length > 0 ? partes.join(', ') : 'Sem pedidos',
-      total: pedidos.filter(p => p.status !== 'cancelado').length,
-    };
+      return {
+        texto: partes.length > 0 ? partes.join(', ') : 'Sem pedidos',
+        total: pedidos.filter(p => p.status !== 'cancelado').length,
+      };
+    } catch (error) {
+      console.error('Erro ao calcular resumo do convidado:', error);
+      return { texto: 'Sem pedidos', total: 0 };
+    }
   };
 
   const getPedidoStatus = (pedido: Pedido) => {
-    if (pedido.status === 'cancelado') return 'cancelado';
-    const totalItens = pedido.itens.length;
-    const itensEntregues = pedido.itens.filter(i => i.entregueEm).length;
-    if (itensEntregues === 0) return 'nenhum';
-    if (itensEntregues === totalItens) return 'concluido';
-    return 'parcial';
+    try {
+      if (pedido.status === 'cancelado') return 'cancelado';
+      if (!Array.isArray(pedido.itens)) return 'nenhum';
+      const totalItens = pedido.itens.length;
+      const itensEntregues = pedido.itens.filter(i => i.entregueEm).length;
+      if (itensEntregues === 0) return 'nenhum';
+      if (itensEntregues === totalItens) return 'concluido';
+      return 'parcial';
+    } catch (error) {
+      console.error('Erro ao calcular status do pedido:', error);
+      return 'nenhum';
+    }
   };
 
   return (

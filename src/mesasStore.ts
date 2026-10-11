@@ -33,13 +33,21 @@ function criarMesasExemplo(): Mesa[] {
 }
 
 export function getMesas(): Mesa[] {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) {
+      const exemplos = criarMesasExemplo();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(exemplos));
+      return exemplos;
+    }
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Erro ao carregar mesas:', error);
+    localStorage.removeItem(STORAGE_KEY);
     const exemplos = criarMesasExemplo();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(exemplos));
     return exemplos;
   }
-  return JSON.parse(data);
 }
 
 export function saveMesas(mesas: Mesa[]): void {

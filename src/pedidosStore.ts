@@ -270,13 +270,29 @@ function criarPedidosExemplo(): Pedido[] {
 }
 
 export function getPedidos(): Pedido[] {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) {
+      const exemplos = criarPedidosExemplo();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(exemplos));
+      return exemplos;
+    }
+    const pedidos = JSON.parse(data);
+    // Migração: adicionar campo entregueEm se não existir
+    return pedidos.map((pedido: any) => ({
+      ...pedido,
+      itens: Array.isArray(pedido.itens) ? pedido.itens.map((item: any) => ({
+        ...item,
+        entregueEm: item.entregueEm || null,
+      })) : [],
+    }));
+  } catch (error) {
+    console.error('Erro ao carregar pedidos:', error);
+    localStorage.removeItem(STORAGE_KEY);
     const exemplos = criarPedidosExemplo();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(exemplos));
     return exemplos;
   }
-  return JSON.parse(data);
 }
 
 export function savePedidos(pedidos: Pedido[]): void {
