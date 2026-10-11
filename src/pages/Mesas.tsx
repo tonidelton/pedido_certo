@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Users, X, Ticket } from 'lucide-react';
+import { Search, Plus, Users, X, Ticket, Database } from 'lucide-react';
 import { Mesa } from '../types';
 import { getMesas, excluirMesa } from '../mesasStore';
 import { getPedidoByCodigo } from '../pedidosStore';
+import { isFirebaseConfigured } from '../firebase';
 import Toast from '../components/Toast';
 
 export default function Mesas() {
@@ -12,9 +13,11 @@ export default function Mesas() {
   const [busca, setBusca] = useState('');
   const [confirmarExclusao, setConfirmarExclusao] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
+  const [firebaseConfigurado, setFirebaseConfigurado] = useState(false);
 
   useEffect(() => {
     setMesas(getMesas());
+    setFirebaseConfigurado(isFirebaseConfigured());
   }, []);
 
   const mesasFiltradas = useMemo(() => {
@@ -82,13 +85,26 @@ export default function Mesas() {
             {mesas.filter(m => m.atendimentoAberto).length} ocupada{mesas.filter(m => m.atendimentoAberto).length !== 1 ? 's' : ''} · {mesas.filter(m => !m.atendimentoAberto).length} livre{mesas.filter(m => !m.atendimentoAberto).length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={() => navigate('/mesa/nova')}
-          className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-3 rounded-xl font-medium shadow-md active:scale-95 transition-transform"
-        >
-          <Plus size={20} />
-          <span className="text-sm">Nova mesa</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/config/firebase')}
+            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
+              firebaseConfigurado
+                ? 'bg-green-100 text-green-600'
+                : 'bg-amber-100 text-amber-600'
+            }`}
+            title={firebaseConfigurado ? 'Firebase configurado' : 'Configurar Firebase'}
+          >
+            <Database size={20} />
+          </button>
+          <button
+            onClick={() => navigate('/mesa/nova')}
+            className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-3 rounded-xl font-medium shadow-md active:scale-95 transition-transform"
+          >
+            <Plus size={20} />
+            <span className="text-sm">Nova mesa</span>
+          </button>
+        </div>
       </div>
 
       {/* Search */}

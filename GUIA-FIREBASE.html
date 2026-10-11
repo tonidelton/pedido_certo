@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia de Configuração do Firebase - Pedido Certo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #1e293b;
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .subtitle {
+            color: #64748b;
+            font-size: 18px;
+            margin-bottom: 40px;
+        }
+        .step {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            transition: transform 0.2s;
+        }
+        .step:hover {
+            transform: translateX(5px);
+        }
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 15px;
+        }
+        .step-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .step-description {
+            color: #475569;
+            line-height: 1.6;
+            margin-left: 55px;
+        }
+        .code-box {
+            background: #1e293b;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+        .tip {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+        .tip::before {
+            content: "💡 ";
+        }
+        .warning {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+        .warning::before {
+            content: "⚠️ ";
+        }
+        .success {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+        .success::before {
+            content: "✅ ";
+        }
+        .link {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin: 10px 0;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .link:hover {
+            background: #2563eb;
+        }
+        .checklist {
+            list-style: none;
+            margin: 20px 0;
+        }
+        .checklist li {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f1f5f9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .checklist li::before {
+            content: "☐ ";
+            font-size: 20px;
+            margin-right: 10px;
+        }
+        .env-example {
+            background: #1e293b;
+            color: #a5f3fc;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 15px 0;
+        }
+        .env-example .comment {
+            color: #64748b;
+        }
+        .env-example .key {
+            color: #fbbf24;
+        }
+        .env-example .value {
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Configurar Firebase</h1>
+        <p class="subtitle">Guia passo a passo para vincular o Firebase ao Pedido Certo</p>
+
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">1</span>
+                Criar conta no Firebase
+            </div>
+            <div class="step-description">
+                <p>Acesse o Firebase Console e faça login com sua conta Google:</p>
+                <a href="https://console.firebase.google.com/" target="_blank" class="link">
+                    Abrir Firebase Console →
+                </a>
+                <div class="tip">
+                    Se você não tem conta Google, crie uma em <a href="https://accounts.google.com" target="_blank">accounts.google.com</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">2</span>
+                Criar um novo projeto
+            </div>
+            <div class="step-description">
+                <ol style="margin-left: 20px; line-height: 2;">
+                    <li>Clique em <strong>"Adicionar projeto"</strong> ou <strong>"Add project"</strong></li>
+                    <li>Dê um nome ao projeto (ex: <code>pedido-certo</code>)</li>
+                    <li>Aceite os termos e clique em <strong>"Continuar"</strong></li>
+                    <li>Desative o Google Analytics (opcional) e clique em <strong>"Criar projeto"</strong></li>
+                    <li>Aguarde a criação do projeto (leva alguns segundos)</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">3</span>
+                Ativar o Firestore Database
+            </div>
+            <div class="step-description">
+                <ol style="margin-left: 20px; line-height: 2;">
+                    <li>No menu lateral esquerdo, clique em <strong>"Firestore Database"</strong> ou <strong>"Build > Firestore Database"</strong></li>
+                    <li>Clique em <strong>"Criar banco de dados"</strong> ou <strong>"Create database"</strong></li>
+                    <li>Selecione <strong>"Iniciar no modo de teste"</strong> (Start in test mode)</li>
+                    <li>Escolha a localização mais próxima (ex: <code>southamerica-east1</code> para São Paulo)</li>
+                    <li>Clique em <strong>"Ativar"</strong> ou <strong>"Enable"</strong></li>
+                </ol>
+                <div class="warning">
+                    O modo de teste expira em 30 dias. Para produção, configure regras de segurança com autenticação.
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">4</span>
+                Registrar o aplicativo Web
+            </div>
+            <div class="step-description">
+                <ol style="margin-left: 20px; line-height: 2;">
+                    <li>Na página inicial do projeto, procure a seção <strong>"Comece adicionando o Firebase ao seu app"</strong></li>
+                    <li>Clique no ícone <strong>Web</strong> (</>) ou em <strong>"Adicionar app"</strong></li>
+                    <li>Dê um apelido para o app (ex: <code>pedido-certo-web</code>)</li>
+                    <li><strong>NÃO</strong> marque a opção "Firebase Hosting"</li>
+                    <li>Clique em <strong>"Registrar app"</strong> ou <strong>"Register app"</strong></li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">5</span>
+                Copiar as credenciais
+            </div>
+            <div class="step-description">
+                <p>Após registrar o app, aparecerá um bloco de código como este:</p>
+                <div class="code-box">
+const firebaseConfig = {<br>
+&nbsp;&nbsp;apiKey: "AIzaSy...",<br>
+&nbsp;&nbsp;authDomain: "pedido-certo.firebaseapp.com",<br>
+&nbsp;&nbsp;projectId: "pedido-certo",<br>
+&nbsp;&nbsp;storageBucket: "pedido-certo.appspot.com",<br>
+&nbsp;&nbsp;messagingSenderId: "123456789",<br>
+&nbsp;&nbsp;appId: "1:123456789:web:abc123"<br>
+};
+                </div>
+                <p><strong>Copie todos esses valores</strong> - você vai precisar deles no próximo passo!</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">6</span>
+                Configurar o arquivo .env
+            </div>
+            <div class="step-description">
+                <p>Abra o arquivo <code>.env</code> na raiz do projeto e preencha com suas credenciais:</p>
+                <div class="env-example">
+<span class="comment"># Configuração do Firebase - Pedido Certo</span><br><br>
+<span class="key">VITE_FIREBASE_API_KEY</span>=<span class="value">AIzaSy...</span><br>
+<span class="key">VITE_FIREBASE_AUTH_DOMAIN</span>=<span class="value">pedido-certo.firebaseapp.com</span><br>
+<span class="key">VITE_FIREBASE_PROJECT_ID</span>=<span class="value">pedido-certo</span><br>
+<span class="key">VITE_FIREBASE_STORAGE_BUCKET</span>=<span class="value">pedido-certo.appspot.com</span><br>
+<span class="key">VITE_FIREBASE_MESSAGING_SENDER_ID</span>=<span class="value">123456789</span><br>
+<span class="key">VITE_FIREBASE_APP_ID</span>=<span class="value">1:123456789:web:abc123</span>
+                </div>
+                <div class="warning">
+                    <strong>IMPORTANTE:</strong> Não compartilhe este arquivo! Ele contém suas credenciais secretas.
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">7</span>
+                Reiniciar o servidor
+            </div>
+            <div class="step-description">
+                <p>Após salvar o arquivo <code>.env</code>, reinicie o servidor de desenvolvimento:</p>
+                <div class="code-box">
+# Pare o servidor (Ctrl+C) e execute novamente:<br>
+npm run dev
+                </div>
+                <div class="success">
+                    Pronto! O app agora está conectado ao Firebase e os dados serão sincronizados na nuvem.
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">8</span>
+                Verificar a configuração
+            </div>
+            <div class="step-description">
+                <p>Na tela inicial do app, clique no ícone do banco de dados (🗄️) para ver o status do Firebase:</p>
+                <ul class="checklist">
+                    <li>Se aparecer <strong>"Firebase Configurado!"</strong> em verde, está tudo certo!</li>
+                    <li>Se aparecer <strong>"Firebase Não Configurado"</strong> em amarelo, verifique o arquivo .env</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="margin-top: 40px; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; color: white;">
+            <h2 style="margin-bottom: 15px;">🎉 Pronto!</h2>
+            <p style="line-height: 1.6; margin-bottom: 20px;">
+                Seu app agora está conectado ao Firebase! Os dados serão sincronizados em tempo real e você poderá acessar de qualquer dispositivo.
+            </p>
+            <div style="background: rgba(255,255,255,0.2); padding: 20px; border-radius: 10px;">
+                <strong>Próximos passos (opcional):</strong>
+                <ul style="margin-top: 10px; margin-left: 20px; line-height: 2;">
+                    <li>Configurar regras de segurança para produção</li>
+                    <li>Adicionar autenticação de usuários</li>
+                    <li>Fazer deploy na Vercel ou Netlify</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center; color: #64748b;">
+            <p>Precisa de ajuda? Consulte a <a href="https://firebase.google.com/docs/firestore/quickstart" target="_blank" style="color: #3b82f6;">documentação oficial do Firebase</a></p>
+        </div>
+    </div>
+</body>
+</html>

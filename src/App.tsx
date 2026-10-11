@@ -8,6 +8,7 @@ import AbrirAtendimento from './pages/AbrirAtendimento';
 import Atendimento from './pages/Atendimento';
 import NovoPedido from './pages/NovoPedido';
 import DetalhePedido from './pages/DetalhePedido';
+import ConfigFirebase from './pages/ConfigFirebase';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/mesa/:id" element={<Atendimento />} />
           <Route path="/mesa/:id/pedido/novo" element={<NovoPedido />} />
           <Route path="/pedido/:id" element={<DetalhePedido />} />
+          <Route path="/config/firebase" element={<ConfigFirebase />} />
         </Route>
       </Routes>
     </HashRouter>
