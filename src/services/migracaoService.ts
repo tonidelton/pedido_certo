@@ -1,4 +1,4 @@
-import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../firebase';
 import { getProdutos as getProdutosLocal } from '../store';
 import { getMesas as getMesasFromStore } from '../mesasStore';
@@ -89,4 +89,76 @@ export function verificarDadosLocais(): { produtos: number; mesas: number; pedid
     mesas: getMesasFromStore().length,
     pedidos: getPedidosFromStore().length
   };
+}
+
+export interface LimpezaResultado {
+  sucesso: boolean;
+  produtosRemovidos: number;
+  mesasRemovidas: number;
+  pedidosRemovidos: number;
+  erros: string[];
+}
+
+export async function limparFirebase(): Promise<LimpezaResultado> {
+  const resultado: LimpezaResultado = {
+    sucesso: true,
+    produtosRemovidos: 0,
+    mesasRemovidas: 0,
+    pedidosRemovidos: 0,
+    erros: []
+  };
+
+  if (!isFirebaseConfigured() || !db) {
+    resultado.sucesso = false;
+    resultado.erros.push('Firebase não configurado');
+    return resultado;
+  }
+
+  try {
+    // Limpar Produtos
+    console.log('Limpando produtos...');
+    const produtosSnapshot = await getDocs(collection(db, 'produtos'));
+    for (const docSnap of produtosSnapshot.docs) {
+      try {
+        await deleteDoc(docSnap.ref);
+        resultado.produtosRemovidos++;
+      } catch (error) {
+        resultado.erros.push(`Erro ao remover produto ${docSnap.id}: ${error}`);
+      }
+    }
+    console.log(`${resultado.produtosRemovidos} produtos removidos`);
+
+    // Limpar Mesas
+    console.log('Limpando mesas...');
+    const mesasSnapshot = await getDocs(collection(db, 'mesas'));
+    for (const docSnap of mesasSnapshot.docs) {
+      try {
+        await deleteDoc(docSnap.ref);
+        resultado.mesasRemovidas++;
+      } catch (error) {
+        resultado.erros.push(`Erro ao remover mesa ${docSnap.id}: ${error}`);
+      }
+    }
+    console.log(`${resultado.mesasRemovidas} mesas removidas`);
+
+    // Limpar Pedidos
+    console.log('Limpando pedidos...');
+    const pedidosSnapshot = await getDocs(collection(db, 'pedidos'));
+    for (const docSnap of pedidosSnapshot.docs) {
+      try {
+        await deleteDoc(docSnap.ref);
+        resultado.pedidosRemovidos++;
+      } catch (error) {
+        resultado.erros.push(`Erro ao remover pedido ${docSnap.id}: ${error}`);
+      }
+    }
+    console.log(`${resultado.pedidosRemovidos} pedidos removidos`);
+
+    resultado.sucesso = resultado.erros.length === 0;
+  } catch (error) {
+    resultado.sucesso = false;
+    resultado.erros.push(`Erro geral na limpeza: ${error}`);
+  }
+
+  return resultado;
 }
