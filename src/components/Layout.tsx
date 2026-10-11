@@ -8,6 +8,7 @@ export default function Layout() {
     location.pathname.includes('/produto') ||
     location.pathname.includes('/mesa/nova') ||
     location.pathname.includes('/abrir') ||
+    location.pathname.includes('/pedido') ||
     /^\/mesa\/[^/]+$/.test(location.pathname);
 
   return (

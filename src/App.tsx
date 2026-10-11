@@ -6,6 +6,8 @@ import ProdutoForm from './pages/ProdutoForm';
 import NovaMesa from './pages/NovaMesa';
 import AbrirAtendimento from './pages/AbrirAtendimento';
 import Atendimento from './pages/Atendimento';
+import NovoPedido from './pages/NovoPedido';
+import DetalhePedido from './pages/DetalhePedido';
 
 export default function App() {
   return (
@@ -18,6 +20,8 @@ export default function App() {
           <Route path="/mesa/nova" element={<NovaMesa />} />
           <Route path="/mesa/:id/abrir" element={<AbrirAtendimento />} />
           <Route path="/mesa/:id" element={<Atendimento />} />
+          <Route path="/mesa/:id/pedido/novo" element={<NovoPedido />} />
+          <Route path="/pedido/:id" element={<DetalhePedido />} />
         </Route>
       </Routes>
     </BrowserRouter>

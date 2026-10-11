@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock, LogOut, Edit3, Check, Users, X } from 'lucide-react';
-import { Mesa, corParaClasses } from '../types';
+import { ArrowLeft, Clock, LogOut, Edit3, Check, Users, X, Plus, FileText } from 'lucide-react';
+import { Mesa, corParaClasses, Pedido, statusPedidoCores, statusPedidoLabels } from '../types';
 import { getMesa, fecharAtendimento, atualizarApelido } from '../mesasStore';
-
-function formatarHora(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
+import { getPedidosByConvidado } from '../pedidosStore';
 
 function formatarDataHora(iso: string): string {
   const d = new Date(iso);
@@ -18,6 +14,11 @@ function formatarDataHora(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatarHora(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 function tempoDecorrido(iso: string): string {
@@ -39,7 +40,17 @@ export default function Atendimento() {
   const [confirmarFechamento, setConfirmarFechamento] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [apelidoEdit, setApelidoEdit] = useState('');
+  const [pedidosPorConvidado, setPedidosPorConvidado] = useState<Record<string, Pedido[]>>({});
   const [, setTick] = useState(0);
+
+  const carregarPedidos = () => {
+    if (!mesa?.atendimentoAberto) return;
+    const map: Record<string, Pedido[]> = {};
+    mesa.atendimentoAberto.convidados.forEach(c => {
+      map[c.id] = getPedidosByConvidado(c.id);
+    });
+    setPedidosPorConvidado(map);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -49,13 +60,22 @@ export default function Atendimento() {
       return;
     }
     setMesa(m);
+    // Carregar pedidos
+    const map: Record<string, Pedido[]> = {};
+    m.atendimentoAberto.convidados.forEach(c => {
+      map[c.id] = getPedidosByConvidado(c.id);
+    });
+    setPedidosPorConvidado(map);
   }, [id, navigate]);
 
   // Atualiza o timer a cada minuto
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    const interval = setInterval(() => {
+      setTick(t => t + 1);
+      carregarPedidos();
+    }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [mesa]);
 
   if (!mesa || !mesa.atendimentoAberto) return null;
 
@@ -75,6 +95,8 @@ export default function Atendimento() {
     if (m) setMesa(m);
     setEditandoId(null);
   };
+
+  const totalPedidos = Object.values(pedidosPorConvidado).reduce((acc, arr) => acc + arr.length, 0);
 
   return (
     <div className="space-y-5">
@@ -108,7 +130,7 @@ export default function Atendimento() {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users size={18} className="text-orange-600" />
+            <Clock size={18} className="text-orange-600" />
             <span className="text-sm font-medium text-orange-800">Tempo</span>
           </div>
           <span className="text-sm font-bold text-orange-900">
@@ -124,15 +146,27 @@ export default function Atendimento() {
             {atendimento.convidados.length}
           </span>
         </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText size={18} className="text-orange-600" />
+            <span className="text-sm font-medium text-orange-800">Pedidos</span>
+          </div>
+          <span className="text-sm font-bold text-orange-900">
+            {totalPedidos}
+          </span>
+        </div>
       </div>
 
       {/* Cards dos convidados */}
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-slate-700">Convidados</h3>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {atendimento.convidados.map(convidado => {
             const classes = corParaClasses[convidado.cor];
             const editando = editandoId === convidado.id;
+            const pedidos = pedidosPorConvidado[convidado.id] || [];
+            const pedidosPendentes = pedidos.filter(p => p.status !== 'entregue' && p.status !== 'cancelado');
+
             return (
               <div
                 key={convidado.id}
@@ -193,7 +227,50 @@ export default function Atendimento() {
                       </div>
                     )}
                   </div>
+
+                  {/* Botão + Pedido */}
+                  <button
+                    onClick={() => navigate(`/mesa/${mesa.id}/pedido/novo?convidadoId=${convidado.id}`)}
+                    className="w-11 h-11 bg-emerald-600 rounded-xl flex items-center justify-center active:scale-95 transition-transform shadow-sm shrink-0"
+                    title="Novo pedido"
+                  >
+                    <Plus size={20} className="text-white" />
+                  </button>
                 </div>
+
+                {/* Lista de pedidos do convidado */}
+                {pedidos.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                      Pedidos ({pedidos.length})
+                    </p>
+                    {pedidos.map(pedido => {
+                      const sClasses = statusPedidoCores[pedido.status];
+                      return (
+                        <button
+                          key={pedido.id}
+                          onClick={() => navigate(`/pedido/${pedido.id}`)}
+                          className="w-full flex items-center justify-between bg-slate-50 rounded-xl p-3 text-left active:bg-slate-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-mono text-sm font-bold text-slate-700">
+                              {pedido.codigo}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {pedido.itens.reduce((a, i) => a + i.quantidade, 0)}{' '}
+                              {pedido.itens.reduce((a, i) => a + i.quantidade, 0) === 1 ? 'item' : 'itens'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${sClasses.bg} ${sClasses.text}`}>
+                              {statusPedidoLabels[pedido.status]}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
