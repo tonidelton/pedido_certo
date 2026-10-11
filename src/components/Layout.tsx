@@ -1,9 +1,14 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Home, UtensilsCrossed, ClipboardList } from 'lucide-react';
+import { ClipboardList, UtensilsCrossed, Home } from 'lucide-react';
 
 export default function Layout() {
   const location = useLocation();
-  const isForm = location.pathname.includes('/produto');
+  // Esconde a bottom nav em formulários e telas de atendimento
+  const hideNav =
+    location.pathname.includes('/produto') ||
+    location.pathname.includes('/mesa/nova') ||
+    location.pathname.includes('/abrir') ||
+    /^\/mesa\/[^/]+$/.test(location.pathname);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -25,12 +30,13 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      {/* Bottom Navigation - only show if not on form */}
-      {!isForm && (
+      {/* Bottom Navigation */}
+      {!hideNav && (
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50">
           <div className="max-w-lg mx-auto flex">
             <NavLink
               to="/"
+              end
               className={({ isActive }) =>
                 `flex-1 flex flex-col items-center py-3 gap-1 transition-colors ${
                   isActive ? 'text-emerald-600' : 'text-slate-400'
@@ -38,7 +44,7 @@ export default function Layout() {
               }
             >
               <Home size={24} />
-              <span className="text-xs font-medium">Início</span>
+              <span className="text-xs font-medium">Mesas</span>
             </NavLink>
             <NavLink
               to="/cardapio"
@@ -51,13 +57,6 @@ export default function Layout() {
               <ClipboardList size={24} />
               <span className="text-xs font-medium">Cardápio</span>
             </NavLink>
-            <button
-              className="flex-1 flex flex-col items-center py-3 gap-1 text-slate-300 cursor-not-allowed"
-              disabled
-            >
-              <UtensilsCrossed size={24} />
-              <span className="text-xs font-medium">Mesas</span>
-            </button>
           </div>
         </nav>
       )}
