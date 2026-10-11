@@ -80,6 +80,7 @@ export interface ItemPedido {
   quantidade: number;
   observacao: string;
   precoUnitario: number | null;
+  entregueEm: string | null;
 }
 
 export interface HistoricoStatus {

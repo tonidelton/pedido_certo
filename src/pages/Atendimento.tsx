@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, LogOut, Edit3, Check, Users, X, Plus, ChefHat, CheckCircle2, XCircle } from 'lucide-react';
 import { Mesa, corParaClasses, Pedido, StatusPedido, statusPedidoCores, statusPedidoLabels } from '../types';
 import { getMesa, fecharAtendimento, atualizarApelido } from '../mesasStore';
-import { getPedidosByConvidado, getPedidosByAtendimento, atualizarStatusPedido } from '../pedidosStore';
+import { getPedidosByConvidado, getPedidosByAtendimento, atualizarStatusPedido, marcarItemEntregue, desmarcarItemEntregue } from '../pedidosStore';
 import Toast from '../components/Toast';
 
 function formatarHora(iso: string): string {
@@ -21,6 +21,11 @@ function tempoDecorrido(iso: string): string {
     return `${horas}h ${minutos}min`;
   }
   return `${minutos}min`;
+}
+
+function formatarHoraEntrega(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function Atendimento() {
@@ -55,7 +60,6 @@ export default function Atendimento() {
       return;
     }
     setMesa(m);
-    // Carregar pedidos
     const map: Record<string, Pedido[]> = {};
     m.atendimentoAberto.convidados.forEach(c => {
       map[c.id] = getPedidosByConvidado(c.id);
@@ -64,7 +68,6 @@ export default function Atendimento() {
     setTodosPedidos(getPedidosByAtendimento(m.atendimentoAberto.id));
   }, [id, navigate]);
 
-  // Atualiza a cada 30 segundos
   useEffect(() => {
     const interval = setInterval(() => {
       setTick(t => t + 1);
@@ -77,26 +80,36 @@ export default function Atendimento() {
 
   const atendimento = mesa.atendimentoAberto;
 
-  // Resumo de status
-  const resumoStatus = useMemo(() => {
-    const pendentes = todosPedidos.filter(p => p.status === 'pendente').length;
-    const emPreparo = todosPedidos.filter(p => p.status === 'em_preparo').length;
-    const entregues = todosPedidos.filter(p => p.status === 'entregue').length;
-    const cancelados = todosPedidos.filter(p => p.status === 'cancelado').length;
+  // Resumo por itens
+  const resumoItens = useMemo(() => {
+    let pendentes = 0;
+    let emPreparo = 0;
+    let entregues = 0;
+
+    todosPedidos.forEach(pedido => {
+      if (pedido.status === 'cancelado') return;
+      pedido.itens.forEach(item => {
+        if (item.entregueEm) {
+          entregues++;
+        } else if (pedido.status === 'pendente') {
+          pendentes++;
+        } else {
+          emPreparo++;
+        }
+      });
+    });
 
     const partes: string[] = [];
     if (pendentes > 0) partes.push(`${pendentes} pendente${pendentes > 1 ? 's' : ''}`);
     if (emPreparo > 0) partes.push(`${emPreparo} em preparo`);
     if (entregues > 0) partes.push(`${entregues} entregue${entregues > 1 ? 's' : ''}`);
-    if (cancelados > 0) partes.push(`${cancelados} cancelado${cancelados > 1 ? 's' : ''}`);
 
-    return partes.length > 0 ? partes.join(' · ') : 'Sem pedidos';
+    return partes.length > 0 ? partes.join(' · ') : 'Sem itens';
   }, [todosPedidos]);
 
-  // Pedidos ordenados cronologicamente
+  // Pedidos ordenados
   const pedidosOrdenados = useMemo(() => {
     return [...todosPedidos].sort((a, b) => {
-      // Pendentes e em_preparo primeiro, depois por data
       const statusOrder: Record<StatusPedido, number> = {
         pendente: 0,
         em_preparo: 1,
@@ -146,11 +159,40 @@ export default function Atendimento() {
     setConfirmarCancelamento(null);
   };
 
+  const handleMarcarItemEntregue = (pedidoId: string, itemId: string) => {
+    const atualizado = marcarItemEntregue(pedidoId, itemId);
+    if (atualizado) {
+      carregarDados();
+      setToast({ message: 'Item marcado como entregue', type: 'success' });
+    }
+  };
+
+  const handleDesmarcarItemEntregue = (pedidoId: string, itemId: string) => {
+    const atualizado = desmarcarItemEntregue(pedidoId, itemId);
+    if (atualizado) {
+      carregarDados();
+      setToast({ message: 'Item desmarcado', type: 'info' });
+    }
+  };
+
   const getResumoPedidosConvidado = (convidadoId: string) => {
     const pedidos = pedidosPorConvidado[convidadoId] || [];
-    const pendentes = pedidos.filter(p => p.status === 'pendente').length;
-    const emPreparo = pedidos.filter(p => p.status === 'em_preparo').length;
-    const entregues = pedidos.filter(p => p.status === 'entregue').length;
+    let pendentes = 0;
+    let emPreparo = 0;
+    let entregues = 0;
+
+    pedidos.forEach(pedido => {
+      if (pedido.status === 'cancelado') return;
+      pedido.itens.forEach(item => {
+        if (item.entregueEm) {
+          entregues++;
+        } else if (pedido.status === 'pendente') {
+          pendentes++;
+        } else {
+          emPreparo++;
+        }
+      });
+    });
 
     const partes: string[] = [];
     if (pendentes > 0) partes.push(`${pendentes} pendente${pendentes > 1 ? 's' : ''}`);
@@ -159,8 +201,17 @@ export default function Atendimento() {
 
     return {
       texto: partes.length > 0 ? partes.join(', ') : 'Sem pedidos',
-      total: pedidos.length,
+      total: pedidos.filter(p => p.status !== 'cancelado').length,
     };
+  };
+
+  const getPedidoStatus = (pedido: Pedido) => {
+    if (pedido.status === 'cancelado') return 'cancelado';
+    const totalItens = pedido.itens.length;
+    const itensEntregues = pedido.itens.filter(i => i.entregueEm).length;
+    if (itensEntregues === 0) return 'nenhum';
+    if (itensEntregues === totalItens) return 'concluido';
+    return 'parcial';
   };
 
   return (
@@ -222,10 +273,10 @@ export default function Atendimento() {
             </div>
           </div>
 
-          {/* Linha 3: Resumo de status */}
+          {/* Linha 3: Resumo por itens */}
           <div className="mt-2 bg-orange-50 rounded-lg px-3 py-2">
             <p className="text-sm font-medium text-orange-800 text-center">
-              {resumoStatus}
+              {resumoItens}
             </p>
           </div>
 
@@ -260,7 +311,7 @@ export default function Atendimento() {
         {modoVisualizacao === 'convidado' ? (
           /* Modo: Por convidado */
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {atendimento.convidados.map(convidado => {
                 const classes = corParaClasses[convidado.cor];
                 const editando = editandoId === convidado.id;
@@ -270,50 +321,52 @@ export default function Atendimento() {
                 return (
                   <div
                     key={convidado.id}
-                    className={`bg-white border rounded-xl p-2.5 shadow-sm ${classes.border}`}
+                    className={`bg-white border-2 rounded-2xl p-4 shadow-sm ${classes.border}`}
                   >
                     {/* Cabeçalho do card */}
-                    <div className="flex items-start gap-2 mb-1.5">
-                      <div className={`w-11 h-11 rounded-lg flex flex-col items-center justify-center ${classes.bg} shrink-0`}>
-                        <span className={`text-[10px] font-medium ${classes.text}`}>Lugar</span>
-                        <span className={`text-base font-bold ${classes.text}`}>{convidado.lugar}</span>
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center ${classes.bg} shrink-0`}>
+                        <span className={`text-xs font-medium ${classes.text}`}>Lugar</span>
+                        <span className={`text-xl font-bold ${classes.text}`}>{convidado.lugar}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         {editando ? (
-                          <div className="space-y-1.5">
+                          <div className="space-y-2">
                             <input
                               type="text"
                               value={apelidoEdit}
                               onChange={e => setApelidoEdit(e.target.value)}
                               placeholder="Apelido..."
-                              className="w-full py-1 px-2 bg-slate-50 rounded text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-slate-200"
+                              className="w-full py-2 px-3 bg-slate-50 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-slate-200"
                               autoFocus
                             />
-                            <div className="flex gap-1">
+                            <div className="flex gap-2">
                               <button
                                 onClick={() => handleSalvarApelido(convidado.id)}
-                                className="flex-1 py-1 bg-emerald-100 rounded flex items-center justify-center"
+                                className="flex-1 py-2 bg-emerald-100 rounded-lg flex items-center justify-center gap-1"
                               >
-                                <Check size={12} className="text-emerald-700" />
+                                <Check size={16} className="text-emerald-700" />
+                                <span className="text-xs font-medium text-emerald-700">Salvar</span>
                               </button>
                               <button
                                 onClick={() => setEditandoId(null)}
-                                className="flex-1 py-1 bg-slate-100 rounded flex items-center justify-center"
+                                className="flex-1 py-2 bg-slate-100 rounded-lg flex items-center justify-center gap-1"
                               >
-                                <X size={12} className="text-slate-500" />
+                                <X size={16} className="text-slate-500" />
+                                <span className="text-xs font-medium text-slate-500">Cancelar</span>
                               </button>
                             </div>
                           </div>
                         ) : (
                           <>
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <div className={`w-2.5 h-2.5 rounded-full ${classes.dot}`}></div>
-                              <span className={`text-[10px] font-medium capitalize ${classes.text}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className={`w-4 h-4 rounded-full ${classes.dot}`}></div>
+                              <span className={`text-sm font-medium capitalize ${classes.text}`}>
                                 {convidado.cor}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <p className="text-xs font-semibold text-slate-800 truncate flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-base font-semibold text-slate-800 flex-1">
                                 {convidado.apelido || `Convidado ${convidado.lugar}`}
                               </p>
                               <button
@@ -321,64 +374,113 @@ export default function Atendimento() {
                                   setEditandoId(convidado.id);
                                   setApelidoEdit(convidado.apelido);
                                 }}
-                                className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center active:bg-slate-200 shrink-0"
+                                className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center active:bg-slate-200 shrink-0"
                               >
-                                <Edit3 size={9} className="text-slate-500" />
+                                <Edit3 size={14} className="text-slate-500" />
                               </button>
                             </div>
+                            <p className="text-xs text-slate-500 mt-0.5">{resumo.texto}</p>
                           </>
                         )}
                       </div>
+                      <button
+                        onClick={() => navigate(`/mesa/${mesa.id}/pedido/novo?convidadoId=${convidado.id}`)}
+                        className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center active:scale-95 transition-transform shadow-sm shrink-0"
+                      >
+                        <Plus size={22} className="text-white" />
+                      </button>
                     </div>
 
-                    {/* Resumo de pedidos */}
-                    <div className="text-[11px] text-slate-600 mb-1.5 line-clamp-1">
-                      {resumo.texto}
-                    </div>
-
-                    {/* Lista de pedidos */}
+                    {/* Lista de pedidos com conteúdo */}
                     {pedidos.length > 0 && (
-                      <div className="space-y-1">
-                        {pedidos.slice(0, 2).map(pedido => {
+                      <div className="space-y-3 pt-3 border-t border-slate-100">
+                        {pedidos.map(pedido => {
+                          const pedidoStatus = getPedidoStatus(pedido);
                           const sClasses = statusPedidoCores[pedido.status];
+
                           return (
-                            <button
-                              key={pedido.id}
-                              onClick={() => navigate(`/pedido/${pedido.id}`)}
-                              className="w-full flex items-center justify-between bg-slate-50 rounded px-1.5 py-1 text-left active:bg-slate-100 transition-colors"
-                            >
-                              <span className={`font-mono text-[10px] font-bold ${
-                                pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-slate-700'
-                              }`}>
-                                {pedido.codigo}
-                              </span>
-                              <span className={`text-[10px] px-1 py-0.5 rounded ${sClasses.bg} ${sClasses.text}`}>
-                                {statusPedidoLabels[pedido.status].split(' ')[0]}
-                              </span>
-                            </button>
+                            <div key={pedido.id} className="space-y-2">
+                              {/* Itens do pedido */}
+                              {pedido.itens.map(item => (
+                                <div key={item.id} className="flex items-start gap-2">
+                                  <button
+                                    onClick={() => {
+                                      if (item.entregueEm) {
+                                        handleDesmarcarItemEntregue(pedido.id, item.id);
+                                      } else {
+                                        handleMarcarItemEntregue(pedido.id, item.id);
+                                      }
+                                    }}
+                                    disabled={pedido.status === 'cancelado'}
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all active:scale-90 ${
+                                      item.entregueEm
+                                        ? 'bg-green-500 text-white'
+                                        : pedido.status === 'cancelado'
+                                        ? 'bg-slate-100 text-slate-300'
+                                        : 'bg-slate-100 text-slate-400 hover:bg-green-100 hover:text-green-600'
+                                    }`}
+                                  >
+                                    {item.entregueEm ? (
+                                      <Check size={16} />
+                                    ) : (
+                                      <div className="w-4 h-4 border-2 border-current rounded"></div>
+                                    )}
+                                  </button>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-sm font-medium ${
+                                      item.entregueEm || pedido.status === 'cancelado'
+                                        ? 'text-slate-400 line-through'
+                                        : 'text-slate-800'
+                                    }`}>
+                                      {item.quantidade}x {item.produtoNome}
+                                    </p>
+                                    {item.observacao && (
+                                      <p className={`text-xs italic ${
+                                        item.entregueEm || pedido.status === 'cancelado'
+                                          ? 'text-slate-400 line-through'
+                                          : 'text-amber-700'
+                                      }`}>
+                                        {item.observacao}
+                                      </p>
+                                    )}
+                                    {item.entregueEm && (
+                                      <p className="text-[10px] text-green-600 mt-0.5">
+                                        ✓ Entregue às {formatarHoraEntrega(item.entregueEm)}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Rodapé do pedido */}
+                              <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-mono text-slate-400">
+                                    {pedido.codigo}
+                                  </span>
+                                  {pedidoStatus === 'parcial' && (
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">
+                                      Parcial
+                                    </span>
+                                  )}
+                                  {pedidoStatus === 'concluido' && (
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                                      Concluído
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => navigate(`/pedido/${pedido.id}`)}
+                                  className="text-[10px] text-emerald-600 font-medium"
+                                >
+                                  Ver detalhes →
+                                </button>
+                              </div>
+                            </div>
                           );
                         })}
-                        {pedidos.length > 2 && (
-                          <button
-                            onClick={() => {
-                              setModoVisualizacao('mesa');
-                            }}
-                            className="w-full text-[10px] text-emerald-600 font-medium py-0.5"
-                          >
-                            +{pedidos.length - 2} pedido{pedidos.length - 2 > 1 ? 's' : ''}
-                          </button>
-                        )}
                       </div>
                     )}
-
-                    {/* Botão + Pedido */}
-                    <button
-                      onClick={() => navigate(`/mesa/${mesa.id}/pedido/novo?convidadoId=${convidado.id}`)}
-                      className="w-full mt-1.5 py-1.5 bg-emerald-600 rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"
-                    >
-                      <Plus size={14} className="text-white" />
-                      <span className="text-[11px] font-semibold text-white">Pedido</span>
-                    </button>
                   </div>
                 );
               })}
@@ -400,27 +502,38 @@ export default function Atendimento() {
                 const sClasses = statusPedidoCores[pedido.status];
                 const convidado = atendimento.convidados.find(c => c.id === pedido.convidadoId);
                 const convidadoClasses = convidado ? corParaClasses[convidado.cor] : null;
+                const pedidoStatus = getPedidoStatus(pedido);
 
                 return (
                   <div
                     key={pedido.id}
-                    className={`bg-white border rounded-2xl p-4 shadow-sm ${sClasses.border}`}
+                    className={`bg-white border-2 rounded-2xl p-4 shadow-sm ${sClasses.border}`}
                   >
                     {/* Cabeçalho do pedido */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-lg font-bold text-slate-800">
+                        <span className="font-mono text-base font-bold text-slate-800">
                           {pedido.codigo}
                         </span>
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${sClasses.bg} ${sClasses.text}`}>
                           {statusPedidoLabels[pedido.status]}
                         </span>
+                        {pedidoStatus === 'parcial' && (
+                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-100 text-orange-700">
+                            Parcial
+                          </span>
+                        )}
+                        {pedidoStatus === 'concluido' && (
+                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+                            Concluído
+                          </span>
+                        )}
                       </div>
                       <button
                         onClick={() => navigate(`/pedido/${pedido.id}`)}
                         className="text-xs text-emerald-600 font-medium"
                       >
-                        Ver detalhes →
+                        Detalhes →
                       </button>
                     </div>
 
@@ -442,21 +555,52 @@ export default function Atendimento() {
                     )}
 
                     {/* Itens */}
-                    <div className="space-y-1 mb-3">
+                    <div className="space-y-2 mb-3">
                       {pedido.itens.map(item => (
-                        <div key={item.id} className="flex items-start gap-2 text-sm">
-                          <span className="text-slate-500 font-medium shrink-0">
-                            {item.quantidade}x
-                          </span>
+                        <div key={item.id} className="flex items-start gap-2">
+                          <button
+                            onClick={() => {
+                              if (item.entregueEm) {
+                                handleDesmarcarItemEntregue(pedido.id, item.id);
+                              } else {
+                                handleMarcarItemEntregue(pedido.id, item.id);
+                              }
+                            }}
+                            disabled={pedido.status === 'cancelado'}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all active:scale-90 ${
+                              item.entregueEm
+                                ? 'bg-green-500 text-white'
+                                : pedido.status === 'cancelado'
+                                ? 'bg-slate-100 text-slate-300'
+                                : 'bg-slate-100 text-slate-400 hover:bg-green-100 hover:text-green-600'
+                            }`}
+                          >
+                            {item.entregueEm ? (
+                              <Check size={16} />
+                            ) : (
+                              <div className="w-4 h-4 border-2 border-current rounded"></div>
+                            )}
+                          </button>
                           <div className="flex-1 min-w-0">
-                            <p className={pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-slate-800'}>
-                              {item.produtoNome}
+                            <p className={`text-sm font-medium ${
+                              item.entregueEm || pedido.status === 'cancelado'
+                                ? 'text-slate-400 line-through'
+                                : 'text-slate-800'
+                            }`}>
+                              {item.quantidade}x {item.produtoNome}
                             </p>
                             {item.observacao && (
                               <p className={`text-xs italic ${
-                                pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-amber-700'
+                                item.entregueEm || pedido.status === 'cancelado'
+                                  ? 'text-slate-400 line-through'
+                                  : 'text-amber-700'
                               }`}>
                                 {item.observacao}
+                              </p>
+                            )}
+                            {item.entregueEm && (
+                              <p className="text-[10px] text-green-600 mt-0.5">
+                                ✓ Entregue às {formatarHoraEntrega(item.entregueEm)}
                               </p>
                             )}
                           </div>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock, User, ChefHat, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Clock, User, ChefHat, CheckCircle2, XCircle, AlertCircle, Check } from 'lucide-react';
 import { Pedido, StatusPedido, statusPedidoLabels, statusPedidoCores } from '../types';
-import { getPedido, atualizarStatusPedido } from '../pedidosStore';
+import { getPedido, atualizarStatusPedido, marcarItemEntregue, desmarcarItemEntregue } from '../pedidosStore';
 import Toast from '../components/Toast';
 
 function formatarDataHora(iso: string): string {
@@ -13,6 +13,11 @@ function formatarDataHora(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatarHora(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 const fluxos: Record<StatusPedido, { label: string; proximo: StatusPedido | null; cor: string; icon: React.ReactNode }> = {
@@ -86,11 +91,34 @@ export default function DetalhePedido() {
     setConfirmarCancelamento(false);
   };
 
+  const handleMarcarItemEntregue = (itemId: string) => {
+    if (!id) return;
+    const atualizado = marcarItemEntregue(id, itemId);
+    if (atualizado) {
+      setPedido(atualizado);
+      setToast({ message: 'Item marcado como entregue', type: 'success' });
+    }
+  };
+
+  const handleDesmarcarItemEntregue = (itemId: string) => {
+    if (!id) return;
+    const atualizado = desmarcarItemEntregue(id, itemId);
+    if (atualizado) {
+      setPedido(atualizado);
+      setToast({ message: 'Item desmarcado', type: 'info' });
+    }
+  };
+
   const totalItens = pedido.itens.reduce((acc, i) => acc + i.quantidade, 0);
   const valorTotal = pedido.itens.reduce((acc, i) => {
     if (i.precoUnitario === null) return acc;
     return acc + i.precoUnitario * i.quantidade;
   }, 0);
+
+  const itensEntregues = pedido.itens.filter(i => i.entregueEm).length;
+  const pedidoStatus = pedido.status === 'cancelado' ? 'cancelado' :
+    itensEntregues === 0 ? 'nenhum' :
+    itensEntregues === pedido.itens.length ? 'concluido' : 'parcial';
 
   return (
     <div className="space-y-5">
@@ -131,6 +159,20 @@ export default function DetalhePedido() {
             {statusPedidoLabels[pedido.status]}
           </span>
         </div>
+        {pedidoStatus === 'parcial' && (
+          <div className="mt-2">
+            <span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-100 text-orange-700">
+              Parcial ({itensEntregues}/{pedido.itens.length} itens)
+            </span>
+          </div>
+        )}
+        {pedidoStatus === 'concluido' && (
+          <div className="mt-2">
+            <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+              Todos os itens entregues
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Info do convidado e garçom */}
@@ -175,7 +217,32 @@ export default function DetalhePedido() {
         <div className="space-y-2">
           {pedido.itens.map(item => (
             <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                {/* Botão de entrega */}
+                <button
+                  onClick={() => {
+                    if (item.entregueEm) {
+                      handleDesmarcarItemEntregue(item.id);
+                    } else {
+                      handleMarcarItemEntregue(item.id);
+                    }
+                  }}
+                  disabled={pedido.status === 'cancelado'}
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-all active:scale-90 ${
+                    item.entregueEm
+                      ? 'bg-green-500 text-white'
+                      : pedido.status === 'cancelado'
+                      ? 'bg-slate-100 text-slate-300'
+                      : 'bg-slate-100 text-slate-400 hover:bg-green-100 hover:text-green-600'
+                  }`}
+                >
+                  {item.entregueEm ? (
+                    <Check size={20} />
+                  ) : (
+                    <div className="w-5 h-5 border-2 border-current rounded"></div>
+                  )}
+                </button>
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
@@ -186,16 +253,25 @@ export default function DetalhePedido() {
                     </span>
                   </div>
                   <p className={`font-semibold text-base mt-1 ${
-                    pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-slate-800'
+                    item.entregueEm || pedido.status === 'cancelado'
+                      ? 'text-slate-400 line-through'
+                      : 'text-slate-800'
                   }`}>
                     {item.produtoNome}
                   </p>
                   {item.observacao && (
                     <p className={`text-sm mt-1 flex items-center gap-1 ${
-                      pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-amber-700'
+                      item.entregueEm || pedido.status === 'cancelado'
+                        ? 'text-slate-400 line-through'
+                        : 'text-amber-700'
                     }`}>
                       <AlertCircle size={12} />
                       {item.observacao}
+                    </p>
+                  )}
+                  {item.entregueEm && (
+                    <p className="text-xs text-green-600 mt-1 font-medium">
+                      ✓ Entregue às {formatarHora(item.entregueEm)}
                     </p>
                   )}
                 </div>
@@ -204,7 +280,11 @@ export default function DetalhePedido() {
                     <p className="text-sm text-slate-500">
                       R$ {item.precoUnitario.toFixed(2).replace('.', ',')} un.
                     </p>
-                    <p className="font-bold text-slate-800">
+                    <p className={`font-bold ${
+                      item.entregueEm || pedido.status === 'cancelado'
+                        ? 'text-slate-400 line-through'
+                        : 'text-slate-800'
+                    }`}>
                       R$ {(item.precoUnitario * item.quantidade).toFixed(2).replace('.', ',')}
                     </p>
                   </div>

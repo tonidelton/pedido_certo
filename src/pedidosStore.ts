@@ -7,7 +7,7 @@ function criarPedidosExemplo(): Pedido[] {
   const minutosAtras = (min: number) => new Date(agora.getTime() - min * 60000).toISOString();
 
   return [
-    // Pedidos da mesa 3 (atendimento com 12 convidados)
+    // P01 - Suco entregue
     {
       id: 'p1',
       codigo: 'M3-P01',
@@ -17,7 +17,7 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 1,
       convidadoApelido: 'Dona Maria',
       itens: [
-        { id: 'i1', produtoId: '5', produtoNome: 'Suco Natural', produtoCodigo: 'B002', quantidade: 1, observacao: 'Laranja, sem açúcar', precoUnitario: 12.00 },
+        { id: 'i1', produtoId: '5', produtoNome: 'Suco Natural', produtoCodigo: 'B002', quantidade: 1, observacao: 'Laranja, sem açúcar', precoUnitario: 12.00, entregueEm: minutosAtras(35) },
       ],
       status: 'entregue',
       historicoStatus: [
@@ -29,6 +29,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(45),
       atualizadoEm: minutosAtras(35),
     },
+    // P02 - Filé + Suco em preparo
     {
       id: 'p2',
       codigo: 'M3-P02',
@@ -38,8 +39,8 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 1,
       convidadoApelido: 'Dona Maria',
       itens: [
-        { id: 'i2', produtoId: '7', produtoNome: 'Filé Mignon ao Molho Madeira', produtoCodigo: 'P001', quantidade: 1, observacao: 'Bem passado', precoUnitario: 68.90 },
-        { id: 'i3', produtoId: '5', produtoNome: 'Suco Natural', produtoCodigo: 'B002', quantidade: 1, observacao: '', precoUnitario: 12.00 },
+        { id: 'i2', produtoId: '7', produtoNome: 'Filé Mignon ao Molho Madeira', produtoCodigo: 'P001', quantidade: 1, observacao: 'Bem passado', precoUnitario: 68.90, entregueEm: null },
+        { id: 'i3', produtoId: '5', produtoNome: 'Suco Natural', produtoCodigo: 'B002', quantidade: 1, observacao: '', precoUnitario: 12.00, entregueEm: null },
       ],
       status: 'em_preparo',
       historicoStatus: [
@@ -50,6 +51,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(30),
       atualizadoEm: minutosAtras(25),
     },
+    // P03 - Refrigerante + Bruschetta pendente
     {
       id: 'p3',
       codigo: 'M3-P03',
@@ -59,8 +61,8 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 2,
       convidadoApelido: 'Seu João',
       itens: [
-        { id: 'i4', produtoId: '4', produtoNome: 'Refrigerante Lata', produtoCodigo: 'B001', quantidade: 2, observacao: 'Com gelo', precoUnitario: 7.50 },
-        { id: 'i5', produtoId: '1', produtoNome: 'Bruschetta Italiana', produtoCodigo: 'E001', quantidade: 1, observacao: '', precoUnitario: 28.90 },
+        { id: 'i4', produtoId: '4', produtoNome: 'Refrigerante Lata', produtoCodigo: 'B001', quantidade: 2, observacao: 'Com gelo', precoUnitario: 7.50, entregueEm: null },
+        { id: 'i5', produtoId: '1', produtoNome: 'Bruschetta Italiana', produtoCodigo: 'E001', quantidade: 1, observacao: '', precoUnitario: 28.90, entregueEm: null },
       ],
       status: 'pendente',
       historicoStatus: [
@@ -70,6 +72,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(15),
       atualizadoEm: minutosAtras(15),
     },
+    // P04 - Água + Salmão entregue
     {
       id: 'p4',
       codigo: 'M3-P04',
@@ -79,8 +82,8 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 3,
       convidadoApelido: 'Aniversariante',
       itens: [
-        { id: 'i6', produtoId: '6', produtoNome: 'Água Mineral', produtoCodigo: 'B003', quantidade: 1, observacao: 'Sem gás', precoUnitario: 5.00 },
-        { id: 'i7', produtoId: '8', produtoNome: 'Salmão Grelhado', produtoCodigo: 'P002', quantidade: 1, observacao: '', precoUnitario: 72.00 },
+        { id: 'i6', produtoId: '6', produtoNome: 'Água Mineral', produtoCodigo: 'B003', quantidade: 1, observacao: 'Sem gás', precoUnitario: 5.00, entregueEm: minutosAtras(22) },
+        { id: 'i7', produtoId: '8', produtoNome: 'Salmão Grelhado', produtoCodigo: 'P002', quantidade: 1, observacao: '', precoUnitario: 72.00, entregueEm: minutosAtras(20) },
       ],
       status: 'entregue',
       historicoStatus: [
@@ -92,6 +95,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(40),
       atualizadoEm: minutosAtras(20),
     },
+    // P05 - Risoto pendente
     {
       id: 'p5',
       codigo: 'M3-P05',
@@ -101,7 +105,7 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 4,
       convidadoApelido: '',
       itens: [
-        { id: 'i8', produtoId: '9', produtoNome: 'Risoto de Camarão', produtoCodigo: 'P003', quantidade: 1, observacao: 'Sem cebola', precoUnitario: 64.50 },
+        { id: 'i8', produtoId: '9', produtoNome: 'Risoto de Camarão', produtoCodigo: 'P003', quantidade: 1, observacao: 'Sem cebola', precoUnitario: 64.50, entregueEm: null },
       ],
       status: 'pendente',
       historicoStatus: [
@@ -111,6 +115,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(10),
       atualizadoEm: minutosAtras(10),
     },
+    // P06 - Bolinho + Refri em preparo (parcial)
     {
       id: 'p6',
       codigo: 'M3-P06',
@@ -120,8 +125,8 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 5,
       convidadoApelido: '',
       itens: [
-        { id: 'i9', produtoId: '2', produtoNome: 'Bolinho de Bacalhau', produtoCodigo: 'E002', quantidade: 1, observacao: '', precoUnitario: 32.00 },
-        { id: 'i10', produtoId: '4', produtoNome: 'Refrigerante Lata', produtoCodigo: 'B001', quantidade: 1, observacao: '', precoUnitario: 7.50 },
+        { id: 'i9', produtoId: '2', produtoNome: 'Bolinho de Bacalhau', produtoCodigo: 'E002', quantidade: 1, observacao: '', precoUnitario: 32.00, entregueEm: null },
+        { id: 'i10', produtoId: '4', produtoNome: 'Refrigerante Lata', produtoCodigo: 'B001', quantidade: 1, observacao: '', precoUnitario: 7.50, entregueEm: minutosAtras(17) },
       ],
       status: 'em_preparo',
       historicoStatus: [
@@ -132,6 +137,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(20),
       atualizadoEm: minutosAtras(18),
     },
+    // P07 - Petit Gâteau entregue
     {
       id: 'p7',
       codigo: 'M3-P07',
@@ -141,7 +147,7 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 6,
       convidadoApelido: '',
       itens: [
-        { id: 'i11', produtoId: '10', produtoNome: 'Petit Gâteau', produtoCodigo: 'S001', quantidade: 1, observacao: '', precoUnitario: 26.00 },
+        { id: 'i11', produtoId: '10', produtoNome: 'Petit Gâteau', produtoCodigo: 'S001', quantidade: 1, observacao: '', precoUnitario: 26.00, entregueEm: minutosAtras(25) },
       ],
       status: 'entregue',
       historicoStatus: [
@@ -153,6 +159,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(35),
       atualizadoEm: minutosAtras(25),
     },
+    // P08 - Carpaccio cancelado
     {
       id: 'p8',
       codigo: 'M3-P08',
@@ -162,7 +169,7 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 7,
       convidadoApelido: '',
       itens: [
-        { id: 'i12', produtoId: '3', produtoNome: 'Carpaccio de Carne', produtoCodigo: 'E003', quantidade: 1, observacao: '', precoUnitario: 38.50 },
+        { id: 'i12', produtoId: '3', produtoNome: 'Carpaccio de Carne', produtoCodigo: 'E003', quantidade: 1, observacao: '', precoUnitario: 38.50, entregueEm: null },
       ],
       status: 'cancelado',
       historicoStatus: [
@@ -173,6 +180,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(28),
       atualizadoEm: minutosAtras(26),
     },
+    // P09 - 2 Pudins pendente
     {
       id: 'p9',
       codigo: 'M3-P09',
@@ -182,7 +190,7 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 8,
       convidadoApelido: '',
       itens: [
-        { id: 'i13', produtoId: '11', produtoNome: 'Pudim de Leite', produtoCodigo: 'S002', quantidade: 2, observacao: '', precoUnitario: 18.00 },
+        { id: 'i13', produtoId: '11', produtoNome: 'Pudim de Leite', produtoCodigo: 'S002', quantidade: 2, observacao: '', precoUnitario: 18.00, entregueEm: null },
       ],
       status: 'pendente',
       historicoStatus: [
@@ -192,6 +200,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(5),
       atualizadoEm: minutosAtras(5),
     },
+    // P10 - Cheesecake + Suco em preparo
     {
       id: 'p10',
       codigo: 'M3-P10',
@@ -201,8 +210,8 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 9,
       convidadoApelido: '',
       itens: [
-        { id: 'i14', produtoId: '12', produtoNome: 'Cheesecake de Frutas Vermelhas', produtoCodigo: 'S003', quantidade: 1, observacao: '', precoUnitario: 24.00 },
-        { id: 'i15', produtoId: '5', produtoNome: 'Suco Natural', produtoCodigo: 'B002', quantidade: 1, observacao: 'Maracujá', precoUnitario: 12.00 },
+        { id: 'i14', produtoId: '12', produtoNome: 'Cheesecake de Frutas Vermelhas', produtoCodigo: 'S003', quantidade: 1, observacao: '', precoUnitario: 24.00, entregueEm: null },
+        { id: 'i15', produtoId: '5', produtoNome: 'Suco Natural', produtoCodigo: 'B002', quantidade: 1, observacao: 'Maracujá', precoUnitario: 12.00, entregueEm: null },
       ],
       status: 'em_preparo',
       historicoStatus: [
@@ -213,6 +222,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(12),
       atualizadoEm: minutosAtras(10),
     },
+    // P11 - Filé entregue
     {
       id: 'p11',
       codigo: 'M3-P11',
@@ -222,7 +232,7 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 10,
       convidadoApelido: '',
       itens: [
-        { id: 'i16', produtoId: '7', produtoNome: 'Filé Mignon ao Molho Madeira', produtoCodigo: 'P001', quantidade: 1, observacao: 'Ao ponto', precoUnitario: 68.90 },
+        { id: 'i16', produtoId: '7', produtoNome: 'Filé Mignon ao Molho Madeira', produtoCodigo: 'P001', quantidade: 1, observacao: 'Ao ponto', precoUnitario: 68.90, entregueEm: minutosAtras(22) },
       ],
       status: 'entregue',
       historicoStatus: [
@@ -234,6 +244,7 @@ function criarPedidosExemplo(): Pedido[] {
       criadoEm: minutosAtras(38),
       atualizadoEm: minutosAtras(22),
     },
+    // P12 - 2 Águas entregue
     {
       id: 'p12',
       codigo: 'M3-P12',
@@ -243,7 +254,7 @@ function criarPedidosExemplo(): Pedido[] {
       convidadoLugar: 11,
       convidadoApelido: '',
       itens: [
-        { id: 'i17', produtoId: '6', produtoNome: 'Água Mineral', produtoCodigo: 'B003', quantidade: 2, observacao: 'Com gás', precoUnitario: 5.00 },
+        { id: 'i17', produtoId: '6', produtoNome: 'Água Mineral', produtoCodigo: 'B003', quantidade: 2, observacao: 'Com gás', precoUnitario: 5.00, entregueEm: minutosAtras(38) },
       ],
       status: 'entregue',
       historicoStatus: [
@@ -347,24 +358,47 @@ export function atualizarStatusPedido(pedidoId: string, novoStatus: StatusPedido
   return pedidos[index];
 }
 
-export function adicionarItemPedido(pedidoId: string, item: ItemPedido): Pedido | null {
+export function marcarItemEntregue(pedidoId: string, itemId: string): Pedido | null {
   const pedidos = getPedidos();
   const index = pedidos.findIndex(p => p.id === pedidoId);
   if (index === -1) return null;
 
-  pedidos[index].itens.push(item);
+  const itemIndex = pedidos[index].itens.findIndex(i => i.id === itemId);
+  if (itemIndex === -1) return null;
+
+  pedidos[index].itens[itemIndex].entregueEm = new Date().toISOString();
   pedidos[index].atualizadoEm = new Date().toISOString();
+
+  // Se todos os itens foram entregues, atualiza status do pedido
+  const todosEntregues = pedidos[index].itens.every(i => i.entregueEm !== null);
+  if (todosEntregues && pedidos[index].status !== 'entregue' && pedidos[index].status !== 'cancelado') {
+    const agora = new Date().toISOString();
+    pedidos[index].status = 'entregue';
+    pedidos[index].historicoStatus.push({ status: 'entregue', timestamp: agora });
+  }
+
   savePedidos(pedidos);
   return pedidos[index];
 }
 
-export function removerItemPedido(pedidoId: string, itemId: string): Pedido | null {
+export function desmarcarItemEntregue(pedidoId: string, itemId: string): Pedido | null {
   const pedidos = getPedidos();
   const index = pedidos.findIndex(p => p.id === pedidoId);
   if (index === -1) return null;
 
-  pedidos[index].itens = pedidos[index].itens.filter(i => i.id !== itemId);
+  const itemIndex = pedidos[index].itens.findIndex(i => i.id === itemId);
+  if (itemIndex === -1) return null;
+
+  pedidos[index].itens[itemIndex].entregueEm = null;
   pedidos[index].atualizadoEm = new Date().toISOString();
+
+  // Se o pedido estava como entregue, volta para em_preparo
+  if (pedidos[index].status === 'entregue') {
+    const agora = new Date().toISOString();
+    pedidos[index].status = 'em_preparo';
+    pedidos[index].historicoStatus.push({ status: 'em_preparo', timestamp: agora });
+  }
+
   savePedidos(pedidos);
   return pedidos[index];
 }

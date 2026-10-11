@@ -106,6 +106,7 @@ export default function NovoPedido() {
       quantidade: item.quantidade,
       observacao: item.observacao,
       precoUnitario: item.produto.preco,
+      entregueEm: null,
     }));
 
     const pedido = criarPedido(
