@@ -3,6 +3,7 @@ import { Produto, Categoria } from './types';
 const STORAGE_KEY = 'pedido-certo-produtos';
 
 const produtosExemplo: Produto[] = [
+  // Entradas (3)
   {
     id: '1',
     nome: 'Bruschetta Italiana',
@@ -27,6 +28,18 @@ const produtosExemplo: Produto[] = [
   },
   {
     id: '3',
+    nome: 'Carpaccio de Carne',
+    codigo: 'E003',
+    categoria: 'Entradas',
+    preco: 38.50,
+    observacoes: 'Finas fatias de filé mignon com rúcula e parmesão',
+    ativo: true,
+    criadoEm: new Date().toISOString(),
+    atualizadoEm: new Date().toISOString(),
+  },
+  // Bebidas (3)
+  {
+    id: '4',
     nome: 'Refrigerante Lata',
     codigo: 'B001',
     categoria: 'Bebidas',
@@ -37,7 +50,7 @@ const produtosExemplo: Produto[] = [
     atualizadoEm: new Date().toISOString(),
   },
   {
-    id: '4',
+    id: '5',
     nome: 'Suco Natural',
     codigo: 'B002',
     categoria: 'Bebidas',
@@ -48,7 +61,7 @@ const produtosExemplo: Produto[] = [
     atualizadoEm: new Date().toISOString(),
   },
   {
-    id: '5',
+    id: '6',
     nome: 'Água Mineral',
     codigo: 'B003',
     categoria: 'Bebidas',
@@ -58,8 +71,9 @@ const produtosExemplo: Produto[] = [
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),
   },
+  // Pratos Principais (3)
   {
-    id: '6',
+    id: '7',
     nome: 'Filé Mignon ao Molho Madeira',
     codigo: 'P001',
     categoria: 'Pratos Principais',
@@ -70,7 +84,7 @@ const produtosExemplo: Produto[] = [
     atualizadoEm: new Date().toISOString(),
   },
   {
-    id: '7',
+    id: '8',
     nome: 'Salmão Grelhado',
     codigo: 'P002',
     categoria: 'Pratos Principais',
@@ -81,7 +95,7 @@ const produtosExemplo: Produto[] = [
     atualizadoEm: new Date().toISOString(),
   },
   {
-    id: '8',
+    id: '9',
     nome: 'Risoto de Camarão',
     codigo: 'P003',
     categoria: 'Pratos Principais',
@@ -91,8 +105,9 @@ const produtosExemplo: Produto[] = [
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),
   },
+  // Sobremesas (3)
   {
-    id: '9',
+    id: '10',
     nome: 'Petit Gâteau',
     codigo: 'S001',
     categoria: 'Sobremesas',
@@ -103,12 +118,23 @@ const produtosExemplo: Produto[] = [
     atualizadoEm: new Date().toISOString(),
   },
   {
-    id: '10',
+    id: '11',
     nome: 'Pudim de Leite',
     codigo: 'S002',
     categoria: 'Sobremesas',
     preco: 18.00,
     observacoes: 'Pudim clássico com calda de caramelo',
+    ativo: true,
+    criadoEm: new Date().toISOString(),
+    atualizadoEm: new Date().toISOString(),
+  },
+  {
+    id: '12',
+    nome: 'Cheesecake de Frutas Vermelhas',
+    codigo: 'S003',
+    categoria: 'Sobremesas',
+    preco: 24.00,
+    observacoes: 'Cheesecake cremoso com calda de frutas vermelhas',
     ativo: true,
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),

@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, LogOut, Edit3, Check, Users, X, Plus, ChefHat, CheckC
 import { Mesa, corParaClasses, Pedido, StatusPedido, statusPedidoCores, statusPedidoLabels } from '../types';
 import { getMesa, fecharAtendimento, atualizarApelido } from '../mesasStore';
 import { getPedidosByConvidado, getPedidosByAtendimento, atualizarStatusPedido } from '../pedidosStore';
+import Toast from '../components/Toast';
 
 function formatarHora(iso: string): string {
   const d = new Date(iso);
@@ -33,6 +34,7 @@ export default function Atendimento() {
   const [pedidosPorConvidado, setPedidosPorConvidado] = useState<Record<string, Pedido[]>>({});
   const [todosPedidos, setTodosPedidos] = useState<Pedido[]>([]);
   const [modoVisualizacao, setModoVisualizacao] = useState<'convidado' | 'mesa'>('convidado');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
   const [, setTick] = useState(0);
 
   const carregarDados = () => {
@@ -127,6 +129,19 @@ export default function Atendimento() {
     const atualizado = atualizarStatusPedido(pedidoId, novoStatus);
     if (atualizado) {
       carregarDados();
+      const mensagens: Record<StatusPedido, string> = {
+        pendente: 'Pedido marcado como pendente',
+        em_preparo: 'Preparo iniciado',
+        entregue: 'Pedido entregue com sucesso',
+        cancelado: 'Pedido cancelado',
+      };
+      const tipos: Record<StatusPedido, 'success' | 'info' | 'warning'> = {
+        pendente: 'info',
+        em_preparo: 'info',
+        entregue: 'success',
+        cancelado: 'warning',
+      };
+      setToast({ message: mensagens[novoStatus], type: tipos[novoStatus] });
     }
     setConfirmarCancelamento(null);
   };
@@ -150,6 +165,15 @@ export default function Atendimento() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* Cabeçalho fixo */}
       <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-lg mx-auto px-4 py-3">
@@ -236,7 +260,7 @@ export default function Atendimento() {
         {modoVisualizacao === 'convidado' ? (
           /* Modo: Por convidado */
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {atendimento.convidados.map(convidado => {
                 const classes = corParaClasses[convidado.cor];
                 const editando = editandoId === convidado.id;
@@ -246,50 +270,50 @@ export default function Atendimento() {
                 return (
                   <div
                     key={convidado.id}
-                    className={`bg-white border rounded-2xl p-3 shadow-sm ${classes.border}`}
+                    className={`bg-white border rounded-xl p-2.5 shadow-sm ${classes.border}`}
                   >
                     {/* Cabeçalho do card */}
-                    <div className="flex items-start gap-2 mb-2">
-                      <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center ${classes.bg} shrink-0`}>
-                        <span className={`text-xs font-medium ${classes.text}`}>Lugar</span>
-                        <span className={`text-lg font-bold ${classes.text}`}>{convidado.lugar}</span>
+                    <div className="flex items-start gap-2 mb-1.5">
+                      <div className={`w-11 h-11 rounded-lg flex flex-col items-center justify-center ${classes.bg} shrink-0`}>
+                        <span className={`text-[10px] font-medium ${classes.text}`}>Lugar</span>
+                        <span className={`text-base font-bold ${classes.text}`}>{convidado.lugar}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         {editando ? (
-                          <div className="space-y-2">
+                          <div className="space-y-1.5">
                             <input
                               type="text"
                               value={apelidoEdit}
                               onChange={e => setApelidoEdit(e.target.value)}
                               placeholder="Apelido..."
-                              className="w-full py-1.5 px-2 bg-slate-50 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-slate-200"
+                              className="w-full py-1 px-2 bg-slate-50 rounded text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-slate-200"
                               autoFocus
                             />
                             <div className="flex gap-1">
                               <button
                                 onClick={() => handleSalvarApelido(convidado.id)}
-                                className="flex-1 py-1.5 bg-emerald-100 rounded-lg flex items-center justify-center"
+                                className="flex-1 py-1 bg-emerald-100 rounded flex items-center justify-center"
                               >
-                                <Check size={14} className="text-emerald-700" />
+                                <Check size={12} className="text-emerald-700" />
                               </button>
                               <button
                                 onClick={() => setEditandoId(null)}
-                                className="flex-1 py-1.5 bg-slate-100 rounded-lg flex items-center justify-center"
+                                className="flex-1 py-1 bg-slate-100 rounded flex items-center justify-center"
                               >
-                                <X size={14} className="text-slate-500" />
+                                <X size={12} className="text-slate-500" />
                               </button>
                             </div>
                           </div>
                         ) : (
                           <>
                             <div className="flex items-center gap-1 mb-0.5">
-                              <div className={`w-3 h-3 rounded-full ${classes.dot}`}></div>
-                              <span className={`text-xs font-medium capitalize ${classes.text}`}>
+                              <div className={`w-2.5 h-2.5 rounded-full ${classes.dot}`}></div>
+                              <span className={`text-[10px] font-medium capitalize ${classes.text}`}>
                                 {convidado.cor}
                               </span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <p className="text-sm font-semibold text-slate-800 truncate flex-1">
+                              <p className="text-xs font-semibold text-slate-800 truncate flex-1">
                                 {convidado.apelido || `Convidado ${convidado.lugar}`}
                               </p>
                               <button
@@ -297,9 +321,9 @@ export default function Atendimento() {
                                   setEditandoId(convidado.id);
                                   setApelidoEdit(convidado.apelido);
                                 }}
-                                className="w-6 h-6 bg-slate-100 rounded flex items-center justify-center active:bg-slate-200 shrink-0"
+                                className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center active:bg-slate-200 shrink-0"
                               >
-                                <Edit3 size={10} className="text-slate-500" />
+                                <Edit3 size={9} className="text-slate-500" />
                               </button>
                             </div>
                           </>
@@ -308,38 +332,40 @@ export default function Atendimento() {
                     </div>
 
                     {/* Resumo de pedidos */}
-                    <div className="text-xs text-slate-600 mb-2">
+                    <div className="text-[11px] text-slate-600 mb-1.5 line-clamp-1">
                       {resumo.texto}
                     </div>
 
                     {/* Lista de pedidos */}
                     {pedidos.length > 0 && (
                       <div className="space-y-1">
-                        {pedidos.slice(0, 3).map(pedido => {
+                        {pedidos.slice(0, 2).map(pedido => {
                           const sClasses = statusPedidoCores[pedido.status];
                           return (
                             <button
                               key={pedido.id}
                               onClick={() => navigate(`/pedido/${pedido.id}`)}
-                              className="w-full flex items-center justify-between bg-slate-50 rounded-lg px-2 py-1.5 text-left active:bg-slate-100 transition-colors"
+                              className="w-full flex items-center justify-between bg-slate-50 rounded px-1.5 py-1 text-left active:bg-slate-100 transition-colors"
                             >
-                              <span className="font-mono text-xs font-bold text-slate-700">
+                              <span className={`font-mono text-[10px] font-bold ${
+                                pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-slate-700'
+                              }`}>
                                 {pedido.codigo}
                               </span>
-                              <span className={`text-xs px-1.5 py-0.5 rounded ${sClasses.bg} ${sClasses.text}`}>
+                              <span className={`text-[10px] px-1 py-0.5 rounded ${sClasses.bg} ${sClasses.text}`}>
                                 {statusPedidoLabels[pedido.status].split(' ')[0]}
                               </span>
                             </button>
                           );
                         })}
-                        {pedidos.length > 3 && (
+                        {pedidos.length > 2 && (
                           <button
                             onClick={() => {
                               setModoVisualizacao('mesa');
                             }}
-                            className="w-full text-xs text-emerald-600 font-medium py-1"
+                            className="w-full text-[10px] text-emerald-600 font-medium py-0.5"
                           >
-                            Ver todos ({pedidos.length})
+                            +{pedidos.length - 2} pedido{pedidos.length - 2 > 1 ? 's' : ''}
                           </button>
                         )}
                       </div>
@@ -348,10 +374,10 @@ export default function Atendimento() {
                     {/* Botão + Pedido */}
                     <button
                       onClick={() => navigate(`/mesa/${mesa.id}/pedido/novo?convidadoId=${convidado.id}`)}
-                      className="w-full mt-2 py-2 bg-emerald-600 rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                      className="w-full mt-1.5 py-1.5 bg-emerald-600 rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"
                     >
-                      <Plus size={16} className="text-white" />
-                      <span className="text-xs font-semibold text-white">Pedido</span>
+                      <Plus size={14} className="text-white" />
+                      <span className="text-[11px] font-semibold text-white">Pedido</span>
                     </button>
                   </div>
                 );
@@ -423,9 +449,13 @@ export default function Atendimento() {
                             {item.quantidade}x
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-slate-800">{item.produtoNome}</p>
+                            <p className={pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-slate-800'}>
+                              {item.produtoNome}
+                            </p>
                             {item.observacao && (
-                              <p className="text-xs text-amber-700 italic">
+                              <p className={`text-xs italic ${
+                                pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-amber-700'
+                              }`}>
                                 {item.observacao}
                               </p>
                             )}

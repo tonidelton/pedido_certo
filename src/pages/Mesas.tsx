@@ -1,14 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Users, FileText, X } from 'lucide-react';
+import { Search, Plus, Users, X, Ticket } from 'lucide-react';
 import { Mesa } from '../types';
 import { getMesas, excluirMesa } from '../mesasStore';
+import { getPedidoByCodigo } from '../pedidosStore';
+import Toast from '../components/Toast';
 
 export default function Mesas() {
   const navigate = useNavigate();
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [busca, setBusca] = useState('');
   const [confirmarExclusao, setConfirmarExclusao] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
     setMesas(getMesas());
@@ -20,10 +23,36 @@ export default function Mesas() {
     return mesas.filter(m => m.numero.toLowerCase().includes(termo));
   }, [mesas, busca]);
 
+  const handleBuscaSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!busca.trim()) return;
+
+    const termo = busca.trim();
+
+    // Verificar se é um código de pedido (formato M{número}-P{sequência})
+    const codigoPedidoRegex = /^M\d+-P\d+$/i;
+    if (codigoPedidoRegex.test(termo)) {
+      const pedido = getPedidoByCodigo(termo);
+      if (pedido) {
+        navigate(`/pedido/${pedido.id}`);
+        setBusca('');
+        return;
+      } else {
+        setToast({ message: `Pedido "${termo}" não encontrado`, type: 'error' });
+        return;
+      }
+    }
+  };
+
+  const handleBuscaChange = (valor: string) => {
+    setBusca(valor);
+  };
+
   const handleExcluir = (id: string) => {
     excluirMesa(id);
     setMesas(getMesas());
     setConfirmarExclusao(null);
+    setToast({ message: 'Mesa excluída com sucesso', type: 'success' });
   };
 
   const handleTapMesa = (mesa: Mesa) => {
@@ -36,6 +65,15 @@ export default function Mesas() {
 
   return (
     <div className="space-y-4">
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -54,16 +92,22 @@ export default function Mesas() {
       </div>
 
       {/* Search */}
-      <div className="relative">
+      <form onSubmit={handleBuscaSubmit} className="relative">
         <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
-          placeholder="Buscar mesa por número..."
+          placeholder="Buscar mesa ou pedido (ex: M3-P01)..."
           value={busca}
-          onChange={e => setBusca(e.target.value)}
+          onChange={e => handleBuscaChange(e.target.value)}
           className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-xl text-base text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
         />
-      </div>
+        {busca && /^M\d+-P\d+$/i.test(busca.trim()) && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg text-xs font-medium">
+            <Ticket size={12} />
+            <span>Pedido</span>
+          </div>
+        )}
+      </form>
 
       {/* Grid de Mesas */}
       <div className="grid grid-cols-2 gap-3">
@@ -74,7 +118,7 @@ export default function Mesas() {
           return (
             <div
               key={mesa.id}
-              className="relative"
+              className="relative group"
             >
               <button
                 onClick={() => handleTapMesa(mesa)}
@@ -127,7 +171,7 @@ export default function Mesas() {
                 {/* Info adicional se ocupada */}
                 {ocupada && (
                   <div className="mt-3 flex items-center gap-1 text-xs text-orange-700 font-medium">
-                    <FileText size={12} />
+                    <Ticket size={12} />
                     <span>Ver atendimento</span>
                   </div>
                 )}
@@ -140,11 +184,10 @@ export default function Mesas() {
                     e.stopPropagation();
                     setConfirmarExclusao(mesa.id);
                   }}
-                  className="absolute top-2 right-2 w-6 h-6 bg-white/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-opacity"
-                  style={{ opacity: 0.6 }}
+                  className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-opacity shadow-sm"
                   title="Excluir mesa"
                 >
-                  <X size={12} className="text-slate-500" />
+                  <X size={14} className="text-slate-500" />
                 </button>
               )}
             </div>

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, User, ChefHat, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { Pedido, StatusPedido, statusPedidoLabels, statusPedidoCores } from '../types';
 import { getPedido, atualizarStatusPedido } from '../pedidosStore';
+import Toast from '../components/Toast';
 
 function formatarDataHora(iso: string): string {
   const d = new Date(iso);
@@ -46,6 +47,7 @@ export default function DetalhePedido() {
   const { id } = useParams<{ id: string }>();
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [confirmarCancelamento, setConfirmarCancelamento] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -65,7 +67,22 @@ export default function DetalhePedido() {
   const handleMudarStatus = (novoStatus: StatusPedido) => {
     if (!id) return;
     const atualizado = atualizarStatusPedido(id, novoStatus);
-    if (atualizado) setPedido(atualizado);
+    if (atualizado) {
+      setPedido(atualizado);
+      const mensagens: Record<StatusPedido, string> = {
+        pendente: 'Pedido marcado como pendente',
+        em_preparo: 'Preparo iniciado',
+        entregue: 'Pedido entregue com sucesso',
+        cancelado: 'Pedido cancelado',
+      };
+      const tipos: Record<StatusPedido, 'success' | 'info' | 'warning'> = {
+        pendente: 'info',
+        em_preparo: 'info',
+        entregue: 'success',
+        cancelado: 'warning',
+      };
+      setToast({ message: mensagens[novoStatus], type: tipos[novoStatus] });
+    }
     setConfirmarCancelamento(false);
   };
 
@@ -77,6 +94,15 @@ export default function DetalhePedido() {
 
   return (
     <div className="space-y-5">
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
@@ -159,9 +185,15 @@ export default function DetalhePedido() {
                       x{item.quantidade}
                     </span>
                   </div>
-                  <p className="font-semibold text-slate-800 text-base mt-1">{item.produtoNome}</p>
+                  <p className={`font-semibold text-base mt-1 ${
+                    pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-slate-800'
+                  }`}>
+                    {item.produtoNome}
+                  </p>
                   {item.observacao && (
-                    <p className="text-sm text-amber-700 mt-1 flex items-center gap-1">
+                    <p className={`text-sm mt-1 flex items-center gap-1 ${
+                      pedido.status === 'cancelado' ? 'text-slate-400 line-through' : 'text-amber-700'
+                    }`}>
                       <AlertCircle size={12} />
                       {item.observacao}
                     </p>

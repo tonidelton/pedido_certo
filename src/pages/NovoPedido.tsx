@@ -5,6 +5,7 @@ import { Produto, Categoria, CATEGORIAS, Convidado, corParaClasses, Mesa, ItemPe
 import { getMesa } from '../mesasStore';
 import { getProdutos } from '../store';
 import { criarPedido } from '../pedidosStore';
+import Toast from '../components/Toast';
 
 const categoriaEmoji: Record<Categoria, string> = {
   'Entradas': '🥗',
@@ -40,6 +41,7 @@ export default function NovoPedido() {
 
   // Dados do pedido
   const [anotadoPor, setAnotadoPor] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
     if (!mesaId) return;
@@ -117,7 +119,11 @@ export default function NovoPedido() {
       anotadoPor.trim() || 'Garçom'
     );
 
-    navigate(`/pedido/${pedido.id}`);
+    setToast({ message: `Pedido ${pedido.codigo} criado com sucesso`, type: 'success' });
+
+    setTimeout(() => {
+      navigate(`/pedido/${pedido.id}`);
+    }, 800);
   };
 
   if (!mesa || !convidado) return null;
@@ -127,6 +133,15 @@ export default function NovoPedido() {
 
   return (
     <div className="space-y-5">
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

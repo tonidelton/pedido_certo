@@ -2,20 +2,42 @@ import { Mesa, Atendimento, Convidado, CORES_CONVIDADO, CorConvidado } from './t
 
 const STORAGE_KEY = 'pedido-certo-mesas';
 
-const mesasExemplo: Mesa[] = [
-  { id: '1', numero: '1', capacidade: 4, atendimentoAberto: null, criadoEm: new Date().toISOString() },
-  { id: '2', numero: '2', capacidade: 2, atendimentoAberto: null, criadoEm: new Date().toISOString() },
-  { id: '3', numero: '3', capacidade: 6, atendimentoAberto: null, criadoEm: new Date().toISOString() },
-  { id: '4', numero: '4', capacidade: 4, atendimentoAberto: null, criadoEm: new Date().toISOString() },
-  { id: '5', numero: '5', capacidade: 8, atendimentoAberto: null, criadoEm: new Date().toISOString() },
-  { id: '6', numero: '6', capacidade: 2, atendimentoAberto: null, criadoEm: new Date().toISOString() },
-];
+function criarMesasExemplo(): Mesa[] {
+  const agora = new Date();
+  const minutosAtras = (min: number) => new Date(agora.getTime() - min * 60000).toISOString();
+
+  // Criar 12 convidados para a mesa 3
+  const convidadosMesa3: Convidado[] = Array.from({ length: 12 }, (_, i) => ({
+    id: `c3-${i + 1}`,
+    lugar: i + 1,
+    cor: CORES_CONVIDADO[i % CORES_CONVIDADO.length],
+    apelido: i === 0 ? 'Dona Maria' : i === 1 ? 'Seu João' : i === 2 ? 'Aniversariante' : '',
+  }));
+
+  const atendimentoMesa3: Atendimento = {
+    id: 'at3',
+    mesaId: '3',
+    convidados: convidadosMesa3,
+    abertoEm: minutosAtras(50),
+    fechadoEm: null,
+  };
+
+  return [
+    { id: '1', numero: '1', capacidade: 4, atendimentoAberto: null, criadoEm: new Date().toISOString() },
+    { id: '2', numero: '2', capacidade: 2, atendimentoAberto: null, criadoEm: new Date().toISOString() },
+    { id: '3', numero: '3', capacidade: 12, atendimentoAberto: atendimentoMesa3, criadoEm: new Date().toISOString() },
+    { id: '4', numero: '4', capacidade: 4, atendimentoAberto: null, criadoEm: new Date().toISOString() },
+    { id: '5', numero: '5', capacidade: 8, atendimentoAberto: null, criadoEm: new Date().toISOString() },
+    { id: '6', numero: '6', capacidade: 2, atendimentoAberto: null, criadoEm: new Date().toISOString() },
+  ];
+}
 
 export function getMesas(): Mesa[] {
   const data = localStorage.getItem(STORAGE_KEY);
   if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mesasExemplo));
-    return mesasExemplo;
+    const exemplos = criarMesasExemplo();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(exemplos));
+    return exemplos;
   }
   return JSON.parse(data);
 }
