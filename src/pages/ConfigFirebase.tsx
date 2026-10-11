@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Database, CheckCircle2, XCircle, Copy, ExternalLink, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Database, CheckCircle2, XCircle, Copy, ExternalLink, AlertCircle, ArrowRight } from 'lucide-react';
 import { isFirebaseConfigured } from '../firebase';
+import { verificarDadosLocais } from '../services/migracaoService';
 
 export default function ConfigFirebase() {
+  const navigate = useNavigate();
   const [configurado, setConfigurado] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [dadosLocais, setDadosLocais] = useState({ produtos: 0, mesas: 0, pedidos: 0 });
 
   useEffect(() => {
     setConfigurado(isFirebaseConfigured());
+    setDadosLocais(verificarDadosLocais());
   }, []);
 
   const copiarExemplo = () => {
@@ -227,6 +232,33 @@ VITE_FIREBASE_APP_ID=1:123456789:web:abc123`}
           </div>
         </div>
       </div>
+
+      {/* Botão de Migração */}
+      {configurado && (dadosLocais.produtos > 0 || dadosLocais.mesas > 0 || dadosLocais.pedidos > 0) && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Database size={24} className="text-emerald-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-emerald-800 mb-1">Migrar Dados</p>
+              <p className="text-sm text-emerald-700 mb-3">
+                Você tem dados no navegador que podem ser migrados para o Firebase:
+              </p>
+              <div className="text-xs text-emerald-600 mb-3 space-y-1">
+                <p>• {dadosLocais.produtos} produtos</p>
+                <p>• {dadosLocais.mesas} mesas</p>
+                <p>• {dadosLocais.pedidos} pedidos</p>
+              </div>
+              <button
+                onClick={() => navigate('/migrar')}
+                className="w-full py-3 bg-emerald-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors"
+              >
+                Migrar para Firebase
+                <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Link para documentação */}
       <a
