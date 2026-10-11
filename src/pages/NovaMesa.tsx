@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
-import { criarMesa, numeroMesaExiste } from '../mesasStore';
+import { criarMesa, numeroMesaExiste } from '../services/mesasService';
 
 export default function NovaMesa() {
   const navigate = useNavigate();
@@ -10,7 +10,7 @@ export default function NovaMesa() {
   const [erro, setErro] = useState('');
   const [erroNumero, setErroNumero] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
     setErroNumero('');
@@ -20,7 +20,9 @@ export default function NovaMesa() {
       return;
     }
 
-    if (numeroMesaExiste(numero.trim())) {
+    // Verificar se já existe no Firebase
+    const existe = await numeroMesaExiste(numero.trim());
+    if (existe) {
       setErroNumero('Já existe uma mesa com este número');
       return;
     }
@@ -31,8 +33,13 @@ export default function NovaMesa() {
       return;
     }
 
-    criarMesa(numero.trim(), cap);
-    navigate('/');
+    try {
+      await criarMesa(numero.trim(), cap);
+      navigate('/');
+    } catch (error) {
+      setErro('Erro ao criar mesa. Tente novamente.');
+      console.error('Erro ao criar mesa:', error);
+    }
   };
 
   return (

@@ -193,7 +193,24 @@ export async function atualizarApelido(
   }
 }
 
-export function numeroMesaExiste(numero: string, excluirId?: string): boolean {
-  const mesas = getMesasLocal();
-  return mesas.some(m => m.numero.toLowerCase() === numero.toLowerCase() && m.id !== excluirId);
+export async function numeroMesaExiste(numero: string, excluirId?: string): Promise<boolean> {
+  if (!isFirebaseConfigured() || !db) {
+    const mesas = getMesasLocal();
+    return mesas.some(m => m.numero.toLowerCase() === numero.toLowerCase() && m.id !== excluirId);
+  }
+
+  try {
+    const mesasRef = collection(db, 'mesas');
+    const snapshot = await getDocs(mesasRef);
+    const mesas = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Mesa[];
+    
+    return mesas.some(m => m.numero.toLowerCase() === numero.toLowerCase() && m.id !== excluirId);
+  } catch (error) {
+    console.error('Erro ao verificar se mesa existe no Firebase:', error);
+    const mesas = getMesasLocal();
+    return mesas.some(m => m.numero.toLowerCase() === numero.toLowerCase() && m.id !== excluirId);
+  }
 }

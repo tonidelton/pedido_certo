@@ -28,6 +28,10 @@ export async function migrarDadosParaFirebase(): Promise<MigracaoResultado> {
   }
 
   try {
+    // Primeiro, limpar o Firebase para evitar duplicação
+    console.log('Limpando Firebase antes da migração...');
+    await limparFirebase();
+
     // Migrar Produtos
     console.log('Migrando produtos...');
     const produtos = getProdutosLocal();
