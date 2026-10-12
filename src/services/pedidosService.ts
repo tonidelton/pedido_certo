@@ -34,6 +34,10 @@ export async function getPedidos(): Promise<Pedido[]> {
     const pedidosRef = collection(db, 'pedidos');
     const snapshot = await getDocs(pedidosRef);
     
+    if (snapshot.empty) {
+      return getPedidosLocal();
+    }
+    
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -51,7 +55,7 @@ export async function getPedido(id: string): Promise<Pedido | undefined> {
 
   try {
     const pedidoDoc = await getDoc(doc(db, 'pedidos', id));
-    if (!pedidoDoc.exists()) return undefined;
+    if (!pedidoDoc.exists()) return getPedidoLocal(id);
     
     return {
       id: pedidoDoc.id,
@@ -73,7 +77,7 @@ export async function getPedidoByCodigo(codigo: string): Promise<Pedido | undefi
     const q = query(pedidosRef, where('codigo', '==', codigo));
     const snapshot = await getDocs(q);
     
-    if (snapshot.empty) return undefined;
+    if (snapshot.empty) return getPedidoByCodigoLocal(codigo);
     
     const doc = snapshot.docs[0];
     return {
@@ -96,6 +100,8 @@ export async function getPedidosByAtendimento(atendimentoId: string): Promise<Pe
     const q = query(pedidosRef, where('atendimentoId', '==', atendimentoId));
     const snapshot = await getDocs(q);
     
+    if (snapshot.empty) return getPedidosByAtendimentoLocal(atendimentoId);
+    
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -116,6 +122,8 @@ export async function getPedidosByConvidado(convidadoId: string): Promise<Pedido
     const q = query(pedidosRef, where('convidadoId', '==', convidadoId));
     const snapshot = await getDocs(q);
     
+    if (snapshot.empty) return getPedidosByConvidadoLocal(convidadoId);
+    
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -135,6 +143,8 @@ export async function getPedidosByMesa(mesaId: string): Promise<Pedido[]> {
     const pedidosRef = collection(db, 'pedidos');
     const q = query(pedidosRef, where('mesaId', '==', mesaId));
     const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) return getPedidosByMesaLocal(mesaId);
     
     return snapshot.docs.map(doc => ({
       id: doc.id,
@@ -291,10 +301,4 @@ export async function desmarcarItemEntregue(pedidoId: string, itemId: string): P
     console.error('Erro ao desmarcar item entregue no Firebase:', error);
     return desmarcarItemEntregueLocal(pedidoId, itemId);
   }
-}
-
-export function gerarCodigoPedido(mesaNumero: string, atendimentoId: string): string {
-  const pedidos = getPedidosByAtendimentoLocal(atendimentoId);
-  const sequencia = pedidos.length + 1;
-  return `M${mesaNumero}-P${String(sequencia).padStart(2, '0')}`;
 }

@@ -16,24 +16,28 @@ export default function Diagnostic() {
   const [results, setResults] = useState<DiagnosticResult[]>([]);
   const [running, setRunning] = useState(false);
 
-  const addResult = (result: DiagnosticResult) => {
-    setResults(prev => [...prev, result]);
-  };
-
-  const updateResult = (index: number, result: Partial<DiagnosticResult>) => {
-    setResults(prev => prev.map((r, i) => i === index ? { ...r, ...result } : r));
-  };
-
   const runDiagnostics = async () => {
     setRunning(true);
     setResults([]);
 
+    // Acumula os resultados em um array local para evitar o problema de
+    // closure (índices calculados sobre estado desatualizado).
+    const acc: DiagnosticResult[] = [];
+    const add = (result: DiagnosticResult) => {
+      acc.push(result);
+      setResults([...acc]);
+    };
+    const update = (index: number, result: Partial<DiagnosticResult>) => {
+      acc[index] = { ...acc[index], ...result };
+      setResults([...acc]);
+    };
+
     // Test 1: Firebase Configuration
-    const idx1 = results.length;
-    addResult({ test: 'Configuração do Firebase', status: 'loading', message: 'Verificando...' });
+    let idx = acc.length;
+    add({ test: 'Configuração do Firebase', status: 'loading', message: 'Verificando...' });
     
     if (!isFirebaseConfigured()) {
-      updateResult(idx1, { 
+      update(idx, { 
         status: 'error', 
         message: 'Firebase não configurado',
         details: 'Verifique se as variáveis de ambiente estão configuradas corretamente'
@@ -42,15 +46,15 @@ export default function Diagnostic() {
       return;
     }
     
-    updateResult(idx1, { status: 'success', message: 'Firebase configurado corretamente' });
+    update(idx, { status: 'success', message: 'Firebase configurado corretamente' });
 
     // Test 2: Firebase Connection
-    const idx2 = results.length;
-    addResult({ test: 'Conexão com Firestore', status: 'loading', message: 'Testando conexão...' });
+    idx = acc.length;
+    add({ test: 'Conexão com Firestore', status: 'loading', message: 'Testando conexão...' });
     
     try {
       if (!db) {
-        updateResult(idx2, { status: 'error', message: 'Database não inicializado' });
+        update(idx, { status: 'error', message: 'Database não inicializado' });
         setRunning(false);
         return;
       }
@@ -59,9 +63,9 @@ export default function Diagnostic() {
       const testRef = collection(db, '__test__');
       await getDocs(testRef);
       
-      updateResult(idx2, { status: 'success', message: 'Conexão com Firestore estabelecida' });
+      update(idx, { status: 'success', message: 'Conexão com Firestore estabelecida' });
     } catch (error) {
-      updateResult(idx2, { 
+      update(idx, { 
         status: 'error', 
         message: 'Erro ao conectar com Firestore',
         details: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -71,8 +75,8 @@ export default function Diagnostic() {
     }
 
     // Test 3: Read Mesas
-    const idx3 = results.length;
-    addResult({ test: 'Leitura de Mesas', status: 'loading', message: 'Buscando mesas...' });
+    idx = acc.length;
+    add({ test: 'Leitura de Mesas', status: 'loading', message: 'Buscando mesas...' });
     
     try {
       const mesasRef = collection(db, 'mesas');
@@ -80,20 +84,20 @@ export default function Diagnostic() {
       const mesas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
       
       if (mesas.length === 0) {
-        updateResult(idx3, { 
+        update(idx, { 
           status: 'error', 
           message: 'Nenhuma mesa encontrada',
           details: 'O banco de dados está vazio. Faça a migração dos dados.'
         });
       } else {
-        updateResult(idx3, { 
+        update(idx, { 
           status: 'success', 
           message: `${mesas.length} mesa(s) encontrada(s)`,
           details: mesas.map((m: any) => `Mesa ${m.numero} (ID: ${m.id})`).join(', ')
         });
       }
     } catch (error) {
-      updateResult(idx3, { 
+      update(idx, { 
         status: 'error', 
         message: 'Erro ao ler mesas',
         details: error instanceof Error ? error.message : 'Erro desconhecido - Verifique as regras de segurança do Firestore'
@@ -101,8 +105,8 @@ export default function Diagnostic() {
     }
 
     // Test 4: Read Produtos
-    const idx4 = results.length;
-    addResult({ test: 'Leitura de Produtos', status: 'loading', message: 'Buscando produtos...' });
+    idx = acc.length;
+    add({ test: 'Leitura de Produtos', status: 'loading', message: 'Buscando produtos...' });
     
     try {
       const produtosRef = collection(db, 'produtos');
@@ -110,20 +114,20 @@ export default function Diagnostic() {
       const produtos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
       
       if (produtos.length === 0) {
-        updateResult(idx4, { 
+        update(idx, { 
           status: 'error', 
           message: 'Nenhum produto encontrado',
           details: 'O banco de dados está vazio. Faça a migração dos dados.'
         });
       } else {
-        updateResult(idx4, { 
+        update(idx, { 
           status: 'success', 
           message: `${produtos.length} produto(s) encontrado(s)`,
           details: produtos.slice(0, 3).map((p: any) => p.nome).join(', ') + (produtos.length > 3 ? '...' : '')
         });
       }
     } catch (error) {
-      updateResult(idx4, { 
+      update(idx, { 
         status: 'error', 
         message: 'Erro ao ler produtos',
         details: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -131,21 +135,21 @@ export default function Diagnostic() {
     }
 
     // Test 5: Read Pedidos
-    const idx5 = results.length;
-    addResult({ test: 'Leitura de Pedidos', status: 'loading', message: 'Buscando pedidos...' });
+    idx = acc.length;
+    add({ test: 'Leitura de Pedidos', status: 'loading', message: 'Buscando pedidos...' });
     
     try {
       const pedidosRef = collection(db, 'pedidos');
       const snapshot = await getDocs(pedidosRef);
       const pedidos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
       
-      updateResult(idx5, { 
+      update(idx, { 
         status: 'success', 
         message: `${pedidos.length} pedido(s) encontrado(s)`,
         details: pedidos.length > 0 ? `Primeiro pedido: ${(pedidos[0] as any).codigo}` : 'Nenhum pedido ainda'
       });
     } catch (error) {
-      updateResult(idx5, { 
+      update(idx, { 
         status: 'error', 
         message: 'Erro ao ler pedidos',
         details: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -153,8 +157,8 @@ export default function Diagnostic() {
     }
 
     // Test 6: Write Test
-    const idx6 = results.length;
-    addResult({ test: 'Escrita no Firestore', status: 'loading', message: 'Testando escrita...' });
+    idx = acc.length;
+    add({ test: 'Escrita no Firestore', status: 'loading', message: 'Testando escrita...' });
     
     try {
       const testDoc = doc(db, '__test__', 'test-doc');
@@ -166,18 +170,18 @@ export default function Diagnostic() {
       // Read it back
       const readBack = await getDoc(testDoc);
       if (readBack.exists()) {
-        updateResult(idx6, { 
+        update(idx, { 
           status: 'success', 
           message: 'Escrita e leitura funcionando corretamente'
         });
       } else {
-        updateResult(idx6, { 
+        update(idx, { 
           status: 'error', 
           message: 'Documento não foi salvo corretamente'
         });
       }
     } catch (error) {
-      updateResult(idx6, { 
+      update(idx, { 
         status: 'error', 
         message: 'Erro ao escrever no Firestore',
         details: error instanceof Error ? error.message : 'Erro desconhecido - Verifique as regras de segurança'
@@ -185,8 +189,8 @@ export default function Diagnostic() {
     }
 
     // Test 7: Check Mesa with Atendimento
-    const idx7 = results.length;
-    addResult({ test: 'Mesas com Atendimento', status: 'loading', message: 'Verificando atendimentos...' });
+    idx = acc.length;
+    add({ test: 'Mesas com Atendimento', status: 'loading', message: 'Verificando atendimentos...' });
     
     try {
       const mesasRef = collection(db, 'mesas');
@@ -195,13 +199,13 @@ export default function Diagnostic() {
       const mesasComAtendimento = mesas.filter((m: any) => m.atendimentoAberto);
       
       if (mesasComAtendimento.length === 0) {
-        updateResult(idx7, { 
+        update(idx, { 
           status: 'error', 
           message: 'Nenhuma mesa com atendimento aberto',
           details: 'Abra um atendimento em uma mesa livre para testar'
         });
       } else {
-        updateResult(idx7, { 
+        update(idx, { 
           status: 'success', 
           message: `${mesasComAtendimento.length} mesa(s) com atendimento aberto`,
           details: mesasComAtendimento.map((m: any) => {
@@ -211,7 +215,7 @@ export default function Diagnostic() {
         });
       }
     } catch (error) {
-      updateResult(idx7, { 
+      update(idx, { 
         status: 'error', 
         message: 'Erro ao verificar atendimentos',
         details: error instanceof Error ? error.message : 'Erro desconhecido'

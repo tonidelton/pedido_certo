@@ -32,6 +32,10 @@ export async function getMesas(): Promise<Mesa[]> {
     const mesasRef = collection(db, 'mesas');
     const snapshot = await getDocs(mesasRef);
     
+    if (snapshot.empty) {
+      return getMesasLocal();
+    }
+    
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -49,7 +53,7 @@ export async function getMesa(id: string): Promise<Mesa | undefined> {
 
   try {
     const mesaDoc = await getDoc(doc(db, 'mesas', id));
-    if (!mesaDoc.exists()) return undefined;
+    if (!mesaDoc.exists()) return getMesaLocal(id);
     
     return {
       id: mesaDoc.id,
@@ -150,7 +154,9 @@ export async function fecharAtendimento(mesaId: string): Promise<Mesa | null> {
     const mesa = await getMesa(mesaId);
     if (!mesa || !mesa.atendimentoAberto) return null;
 
-    mesa.atendimentoAberto.fechadoEm = new Date().toISOString();
+    if (mesa.atendimentoAberto) {
+      mesa.atendimentoAberto.fechadoEm = new Date().toISOString();
+    }
     mesa.atendimentoAberto = null;
 
     await updateDoc(doc(db, 'mesas', mesaId), {

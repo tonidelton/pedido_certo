@@ -28,6 +28,10 @@ export async function getProdutos(): Promise<Produto[]> {
     const q = query(produtosRef, orderBy('categoria'));
     const snapshot = await getDocs(q);
     
+    if (snapshot.empty) {
+      return getProdutosLocal();
+    }
+    
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -104,7 +108,7 @@ export async function toggleAtivo(id: string): Promise<Produto | null> {
   }
 }
 
-export function gerarCodigoSugerido(categoria: Categoria): string {
+export async function gerarCodigoSugerido(categoria: Categoria): Promise<string> {
   const prefixos: Record<Categoria, string> = {
     'Entradas': 'E',
     'Bebidas': 'B',
@@ -113,7 +117,7 @@ export function gerarCodigoSugerido(categoria: Categoria): string {
   };
   
   const prefixo = prefixos[categoria];
-  const produtos = getProdutosLocal();
+  const produtos = await getProdutos();
   const codigosCategoria = produtos
     .filter(p => p.codigo.startsWith(prefixo))
     .map(p => parseInt(p.codigo.slice(1)) || 0);
@@ -122,7 +126,7 @@ export function gerarCodigoSugerido(categoria: Categoria): string {
   return `${prefixo}${String(max + 1).padStart(2, '0')}`;
 }
 
-export function codigoExiste(codigo: string, excluirId?: string): boolean {
-  const produtos = getProdutosLocal();
+export async function codigoExiste(codigo: string, excluirId?: string): Promise<boolean> {
+  const produtos = await getProdutos();
   return produtos.some(p => p.codigo.toLowerCase() === codigo.toLowerCase() && p.id !== excluirId);
 }

@@ -36,16 +36,16 @@ export default function ProdutoForm() {
         }
       } else {
         // Sugerir código automaticamente
-        setCodigo(gerarCodigoSugerido('Entradas'));
+        setCodigo(await gerarCodigoSugerido('Entradas'));
       }
     };
     carregar();
   }, [id, isEdit, navigate]);
 
-  const handleCategoriaChange = (novaCategoria: Categoria) => {
+  const handleCategoriaChange = async (novaCategoria: Categoria) => {
     setCategoria(novaCategoria);
     if (!isEdit) {
-      setCodigo(gerarCodigoSugerido(novaCategoria));
+      setCodigo(await gerarCodigoSugerido(novaCategoria));
     }
   };
 
@@ -54,7 +54,7 @@ export default function ProdutoForm() {
     setErroCodigo('');
   };
 
-  const validar = (): boolean => {
+  const validar = async (): Promise<boolean> => {
     if (!nome.trim()) {
       setErro('Nome é obrigatório');
       return false;
@@ -63,7 +63,7 @@ export default function ProdutoForm() {
       setErro('Código é obrigatório');
       return false;
     }
-    if (codigoExiste(codigo.trim(), isEdit ? id : undefined)) {
+    if (await codigoExiste(codigo.trim(), isEdit ? id : undefined)) {
       setErroCodigo('Este código já está em uso');
       setErro('');
       return false;
@@ -76,7 +76,7 @@ export default function ProdutoForm() {
     setErro('');
     setErroCodigo('');
 
-    if (!validar()) return;
+    if (!(await validar())) return;
 
     setSalvando(true);
 
