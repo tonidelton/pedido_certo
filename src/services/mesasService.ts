@@ -4,13 +4,14 @@ import {
   getDocs, 
   getDoc,
   addDoc, 
+  setDoc,
   updateDoc, 
   deleteDoc,
   query,
   where
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../firebase';
-import { Mesa } from '../types';
+import { Mesa, AtendimentoFechado } from '../types';
 import { 
   getMesas as getMesasLocal, 
   getMesa as getMesaLocal,
@@ -18,7 +19,10 @@ import {
   excluirMesa as excluirMesaLocal,
   abrirAtendimento as abrirAtendimentoLocal,
   fecharAtendimento as fecharAtendimentoLocal,
-  atualizarApelido as atualizarApelidoLocal
+  atualizarApelido as atualizarApelidoLocal,
+  reordenarMesas as reordenarMesasLocal,
+  getAtendimentosFechados as getAtendimentosFechadosLocal,
+  ordenarMesas
 } from '../mesasStore';
 
 // ===== MESAS =====
@@ -36,10 +40,11 @@ export async function getMesas(): Promise<Mesa[]> {
       return getMesasLocal();
     }
     
-    return snapshot.docs.map(doc => ({
+    const mesas = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as Mesa[];
+    return ordenarMesas(mesas);
   } catch (error) {
     console.error('Erro ao buscar mesas do Firebase:', error);
     return getMesasLocal();
@@ -71,10 +76,13 @@ export async function criarMesa(numero: string, capacidade: number | null): Prom
   }
 
   try {
+    const mesas = await getMesas();
+    const proximaOrdem = mesas.reduce((max, m) => Math.max(max, m.ordem ?? 0), -1) + 1;
     const novaMesa = {
       numero: numero.trim(),
       capacidade,
       atendimentoAberto: null,
+      ordem: proximaOrdem,
       criadoEm: new Date().toISOString()
     };
 
@@ -154,19 +162,64 @@ export async function fecharAtendimento(mesaId: string): Promise<Mesa | null> {
     const mesa = await getMesa(mesaId);
     if (!mesa || !mesa.atendimentoAberto) return null;
 
-    if (mesa.atendimentoAberto) {
-      mesa.atendimentoAberto.fechadoEm = new Date().toISOString();
-    }
-    mesa.atendimentoAberto = null;
+    const atendimentoFechado: AtendimentoFechado = {
+      ...mesa.atendimentoAberto,
+      mesaNumero: mesa.numero,
+      fechadoEm: new Date().toISOString()
+    };
 
     await updateDoc(doc(db, 'mesas', mesaId), {
       atendimentoAberto: null
     });
+    await setDoc(doc(db, 'atendimentos', atendimentoFechado.id), atendimentoFechado);
 
-    return mesa;
+    return { ...mesa, atendimentoAberto: null };
   } catch (error) {
     console.error('Erro ao fechar atendimento no Firebase:', error);
     return fecharAtendimentoLocal(mesaId);
+  }
+}
+
+export async function reordenarMesas(mesasOrdenadas: Mesa[]): Promise<Mesa[]> {
+  if (!isFirebaseConfigured() || !db) {
+    return reordenarMesasLocal(mesasOrdenadas);
+  }
+
+  const firestore = db;
+
+  try {
+    const mesas = mesasOrdenadas.map((m, i) => ({ ...m, ordem: i }));
+    await Promise.all(
+      mesas.map(m => updateDoc(doc(firestore, 'mesas', m.id), { ordem: m.ordem }))
+    );
+    return mesas;
+  } catch (error) {
+    console.error('Erro ao reordenar mesas no Firebase:', error);
+    return reordenarMesasLocal(mesasOrdenadas);
+  }
+}
+
+export async function getAtendimentosFechados(): Promise<AtendimentoFechado[]> {
+  if (!isFirebaseConfigured() || !db) {
+    return getAtendimentosFechadosLocal();
+  }
+
+  try {
+    const ref = collection(db, 'atendimentos');
+    const snapshot = await getDocs(ref);
+
+    if (snapshot.empty) {
+      return getAtendimentosFechadosLocal();
+    }
+
+    const lista = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() })) as AtendimentoFechado[];
+    return lista.sort((a, b) =>
+      new Date(b.fechadoEm || 0).getTime() - new Date(a.fechadoEm || 0).getTime()
+    );
+  } catch (error) {
+    console.error('Erro ao buscar histórico de atendimentos:', error);
+    return getAtendimentosFechadosLocal();
   }
 }
 

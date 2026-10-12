@@ -46,11 +46,16 @@ export interface Atendimento {
   fechadoEm: string | null;
 }
 
+export interface AtendimentoFechado extends Atendimento {
+  mesaNumero: string;
+}
+
 export interface Mesa {
   id: string;
   numero: string;
   capacidade: number | null;
   atendimentoAberto: Atendimento | null;
+  ordem: number;
   criadoEm: string;
 }
 

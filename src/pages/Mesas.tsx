@@ -1,11 +1,118 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Users, X, Ticket, Database, Stethoscope } from 'lucide-react';
+import { Search, Plus, Users, X, Ticket, Database, Stethoscope, GripVertical, History } from 'lucide-react';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Mesa } from '../types';
-import { getMesas, excluirMesa } from '../services/mesasService';
+import { getMesas, excluirMesa, reordenarMesas } from '../services/mesasService';
 import { getPedidoByCodigo } from '../services/pedidosService';
 import { isFirebaseConfigured } from '../firebase';
 import Toast from '../components/Toast';
+
+interface SortableMesaCardProps {
+  mesa: Mesa;
+  onTap: (mesa: Mesa) => void;
+  onDelete: (id: string) => void;
+}
+
+function SortableMesaCard({ mesa, onTap, onDelete }: SortableMesaCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: mesa.id });
+  const ocupada = !!mesa.atendimentoAberto;
+  const numConvidados = mesa.atendimentoAberto?.convidados.length || 0;
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative group ${isDragging ? 'opacity-90' : ''}`}
+    >
+      <div
+        onClick={() => onTap(mesa)}
+        className={`w-full rounded-2xl p-4 border-2 text-left transition-all active:scale-[0.97] shadow-sm cursor-pointer ${
+          ocupada ? 'bg-orange-50 border-orange-300' : 'bg-green-50 border-green-300'
+        }`}
+      >
+        {/* Status badge + drag handle */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+              className="touch-none cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 p-0.5 -ml-1.5 shrink-0"
+              title="Arraste para reordenar"
+            >
+              <GripVertical size={18} />
+            </span>
+            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${
+              ocupada ? 'bg-orange-200 text-orange-800' : 'bg-green-200 text-green-800'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${ocupada ? 'bg-orange-500' : 'bg-green-500'}`}></span>
+              {ocupada ? 'Ocupada' : 'Livre'}
+            </span>
+          </div>
+          {mesa.capacidade && (
+            <span className="text-xs text-slate-500 flex items-center gap-1 shrink-0">
+              <Users size={12} />
+              {mesa.capacidade}
+            </span>
+          )}
+        </div>
+
+        {/* Número da mesa */}
+        <div className="flex items-center gap-2">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${
+            ocupada ? 'bg-orange-200 text-orange-800' : 'bg-green-200 text-green-800'
+          }`}>
+            {mesa.numero}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-slate-800 text-base truncate">
+              Mesa {mesa.numero}
+            </p>
+            {ocupada && (
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-xs text-slate-600 flex items-center gap-1">
+                  <Users size={12} />
+                  {numConvidados}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Info adicional se ocupada */}
+        {ocupada && (
+          <div className="mt-3 flex items-center gap-1 text-xs text-orange-700 font-medium">
+            <Ticket size={12} />
+            <span>Ver atendimento</span>
+          </div>
+        )}
+      </div>
+
+      {/* Botão excluir (apenas se livre) */}
+      {!ocupada && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(mesa.id);
+          }}
+          className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-opacity shadow-sm"
+          title="Excluir mesa"
+        >
+          <X size={14} className="text-slate-500" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Mesas() {
   const navigate = useNavigate();
@@ -23,6 +130,24 @@ export default function Mesas() {
     };
     carregar();
   }, []);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setMesas((prev) => {
+      const oldIndex = prev.findIndex((m) => m.id === active.id);
+      const newIndex = prev.findIndex((m) => m.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const reordered = arrayMove(prev, oldIndex, newIndex);
+      reordenarMesas(reordered);
+      return reordered;
+    });
+  };
 
   const mesasFiltradas = useMemo(() => {
     if (!busca.trim()) return mesas;
@@ -92,6 +217,13 @@ export default function Mesas() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => navigate('/historico')}
+            className="w-11 h-11 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center transition-colors hover:bg-purple-200"
+            title="Histórico de atendimentos"
+          >
+            <History size={20} />
+          </button>
+          <button
             onClick={() => navigate('/diagnostic')}
             className="w-11 h-11 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center transition-colors hover:bg-blue-200"
             title="Diagnóstico do Firebase"
@@ -138,90 +270,20 @@ export default function Mesas() {
       </form>
 
       {/* Grid de Mesas */}
-      <div className="grid grid-cols-2 gap-3">
-        {mesasFiltradas.map(mesa => {
-          const ocupada = !!mesa.atendimentoAberto;
-          const numConvidados = mesa.atendimentoAberto?.convidados.length || 0;
-
-          return (
-            <div
-              key={mesa.id}
-              className="relative group"
-            >
-              <button
-                onClick={() => handleTapMesa(mesa)}
-                className={`w-full rounded-2xl p-4 border-2 text-left transition-all active:scale-[0.97] shadow-sm ${
-                  ocupada
-                    ? 'bg-orange-50 border-orange-300'
-                    : 'bg-green-50 border-green-300'
-                }`}
-              >
-                {/* Status badge */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${
-                    ocupada
-                      ? 'bg-orange-200 text-orange-800'
-                      : 'bg-green-200 text-green-800'
-                  }`}>
-                    <span className={`w-2 h-2 rounded-full ${ocupada ? 'bg-orange-500' : 'bg-green-500'}`}></span>
-                    {ocupada ? 'Ocupada' : 'Livre'}
-                  </span>
-                  {mesa.capacidade && (
-                    <span className="text-xs text-slate-500 flex items-center gap-1">
-                      <Users size={12} />
-                      {mesa.capacidade}
-                    </span>
-                  )}
-                </div>
-
-                {/* Número da mesa */}
-                <div className="flex items-center gap-2">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${
-                    ocupada ? 'bg-orange-200 text-orange-800' : 'bg-green-200 text-green-800'
-                  }`}>
-                    {mesa.numero}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-800 text-base truncate">
-                      Mesa {mesa.numero}
-                    </p>
-                    {ocupada && (
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-slate-600 flex items-center gap-1">
-                          <Users size={12} />
-                          {numConvidados}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Info adicional se ocupada */}
-                {ocupada && (
-                  <div className="mt-3 flex items-center gap-1 text-xs text-orange-700 font-medium">
-                    <Ticket size={12} />
-                    <span>Ver atendimento</span>
-                  </div>
-                )}
-              </button>
-
-              {/* Botão excluir (apenas se livre) */}
-              {!ocupada && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setConfirmarExclusao(mesa.id);
-                  }}
-                  className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-opacity shadow-sm"
-                  title="Excluir mesa"
-                >
-                  <X size={14} className="text-slate-500" />
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={mesasFiltradas.map(m => m.id)} strategy={rectSortingStrategy}>
+          <div className="grid grid-cols-2 gap-3">
+            {mesasFiltradas.map(mesa => (
+              <SortableMesaCard
+                key={mesa.id}
+                mesa={mesa}
+                onTap={handleTapMesa}
+                onDelete={(id) => setConfirmarExclusao(id)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Empty state */}
       {mesasFiltradas.length === 0 && (
