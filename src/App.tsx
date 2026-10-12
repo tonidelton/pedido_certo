@@ -10,6 +10,7 @@ import NovoPedido from './pages/NovoPedido';
 import DetalhePedido from './pages/DetalhePedido';
 import ConfigFirebase from './pages/ConfigFirebase';
 import MigrarDados from './pages/MigrarDados';
+import Diagnostic from './pages/Diagnostic';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/pedido/:id" element={<DetalhePedido />} />
           <Route path="/config/firebase" element={<ConfigFirebase />} />
           <Route path="/migrar" element={<MigrarDados />} />
+          <Route path="/diagnostic" element={<Diagnostic />} />
         </Route>
       </Routes>
     </HashRouter>

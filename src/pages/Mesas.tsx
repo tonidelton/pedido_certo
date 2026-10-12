@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Users, X, Ticket, Database } from 'lucide-react';
+import { Search, Plus, Users, X, Ticket, Database, Stethoscope } from 'lucide-react';
 import { Mesa } from '../types';
 import { getMesas, excluirMesa } from '../services/mesasService';
 import { getPedidoByCodigo } from '../services/pedidosService';
@@ -91,6 +91,13 @@ export default function Mesas() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/diagnostic')}
+            className="w-11 h-11 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center transition-colors hover:bg-blue-200"
+            title="Diagnóstico do Firebase"
+          >
+            <Stethoscope size={20} />
+          </button>
           <button
             onClick={() => navigate('/config/firebase')}
             className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
